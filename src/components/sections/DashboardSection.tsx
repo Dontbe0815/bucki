@@ -4,13 +4,17 @@ import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { useI18n } from '@/contexts/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
   DoorOpen, DollarSign, TrendingUp, TrendingDown, Building2, CreditCard, Percent,
-  ArrowUpRight, ArrowDownRight, Wallet, Zap, Target, PieChart, LineChart
+  ArrowUpRight, ArrowDownRight, Wallet, Zap, Target, PieChart, LineChart,
+  BarChart3, Home, Landmark, PiggyBank, Receipt, Wrench, FileText, Shield,
+  MapPin, Calendar, Euro, Users
 } from 'lucide-react';
 import { 
   PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, Line,
+  ComposedChart
 } from 'recharts';
 import type { Unit, Property, Financing } from '@/lib/types';
 
@@ -21,97 +25,88 @@ interface DashboardSectionProps {
 }
 
 // Chart Colors
-const CHART_COLORS = {
-  interest: '#ef4444',
-  principal: '#10b981',
-  debt: '#3b82f6',
-  equity: '#10b981',
+const COLORS = {
   primary: '#10b981',
   secondary: '#3b82f6',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
+  cyan: '#06b6d4',
+  lime: '#84cc16',
+  orange: '#f97316',
+  indigo: '#6366f1',
 };
+
+const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 // LTV Gauge Component
 function LTVGauge({ ltv }: { ltv: number }) {
   const getColor = (ltv: number) => {
-    if (ltv <= 60) return '#10b981';
-    if (ltv <= 75) return '#f59e0b';
-    if (ltv <= 85) return '#f97316';
-    return '#ef4444';
+    if (ltv <= 60) return COLORS.primary;
+    if (ltv <= 75) return COLORS.warning;
+    if (ltv <= 85) return COLORS.orange;
+    return COLORS.danger;
   };
 
   const color = getColor(ltv);
   
   return (
-    <div className="relative w-32 h-16 mx-auto">
+    <div className="relative w-28 h-14 mx-auto">
       <svg viewBox="0 0 100 50" className="w-full h-full">
-        <path
-          d="M 10 50 A 40 40 0 0 1 90 50"
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth="10"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 10 50 A 40 40 0 0 1 90 50"
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
+        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#e5e7eb" strokeWidth="10" strokeLinecap="round" />
+        <path 
+          d="M 10 50 A 40 40 0 0 1 90 50" 
+          fill="none" 
+          stroke={color} 
+          strokeWidth="10" 
           strokeLinecap="round"
           strokeDasharray={`${Math.min(ltv, 100) * 1.26} 126`}
           style={{ transition: 'stroke-dasharray 0.5s ease' }}
         />
       </svg>
-      <div className="absolute inset-0 flex items-end justify-center pb-1">
-        <span className="text-xl font-bold" style={{ color }}>{ltv.toFixed(1)}%</span>
+      <div className="absolute inset-0 flex items-end justify-center pb-0">
+        <span className="text-lg font-bold" style={{ color }}>{ltv.toFixed(1)}%</span>
       </div>
     </div>
   );
 }
 
-// Rendite Gauge Component (Circular)
-function RenditeGauge({ value, label, maxValue = 10 }: { value: number; label: string; maxValue?: number }) {
+// Rendite Gauge Component
+function RenditeGauge({ value, label }: { value: number; label: string }) {
   const getColor = (value: number) => {
-    if (value >= 5) return '#10b981'; // green
-    if (value >= 3) return '#3b82f6'; // blue
-    if (value >= 2) return '#f59e0b'; // amber
-    return '#ef4444'; // red
+    if (value >= 5) return COLORS.primary;
+    if (value >= 3) return COLORS.secondary;
+    if (value >= 2) return COLORS.warning;
+    return COLORS.danger;
   };
 
   const color = getColor(value);
-  const percentage = Math.min((value / maxValue) * 100, 100);
-  const radius = 40;
+  const percentage = Math.min((value / 10) * 100, 100);
+  const radius = 35;
   const circumference = 2 * Math.PI * radius;
   const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
 
   return (
     <div className="text-center">
-      <div className="relative w-24 h-24 mx-auto">
+      <div className="relative w-20 h-20 mx-auto">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke="#e5e7eb"
-            strokeWidth="10"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth="10"
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="8" />
+          <circle 
+            cx="50" cy="50" r={radius} 
+            fill="none" 
+            stroke={color} 
+            strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={strokeDasharray}
             style={{ transition: 'stroke-dasharray 0.5s ease' }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold" style={{ color }}>{value.toFixed(1)}%</span>
+          <span className="text-base font-bold" style={{ color }}>{value.toFixed(1)}%</span>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 max-w-[100px] mx-auto">{label}</p>
+      <p className="text-xs text-muted-foreground mt-1">{label}</p>
     </div>
   );
 }
@@ -121,156 +116,114 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
   const { formatCurrency } = useI18n();
 
   // ============================================
-  // BERECHNUNGEN - SPALTE 1
+  // KPI BERECHNUNGEN
   // ============================================
   
-  const spalte1Data = useMemo(() => {
+  const kpiData = useMemo(() => {
+    // Wohneinheiten
     const totalUnits = store.units.length;
     const rentedUnits = store.units.filter((u: Unit) => u.status === 'rented').length;
     const vacantUnits = totalUnits - rentedUnits;
     
+    // Kaltmiete
     const coldRent = store.units
       .filter((u: Unit) => u.status === 'rented')
       .reduce((sum: number, u: Unit) => sum + u.baseRent, 0);
     
-    const totalPurchasePrice = store.properties.reduce((sum: number, p) => sum + p.purchasePrice, 0);
-    const avgRoi = totalPurchasePrice > 0 ? ((coldRent * 12) / totalPurchasePrice) * 100 : 0;
+    // Schätzwert
+    const estimatedValue = store.properties.reduce((sum: number, p: Property) => 
+      sum + (p.estimatedValue || p.marketValue), 0);
     
-    return { totalUnits, rentedUnits, vacantUnits, coldRent, avgRoi };
-  }, [store.units, store.properties]);
-
-  // ============================================
-  // BERECHNUNGEN - SPALTE 2
-  // ============================================
-  
-  const spalte2Data = useMemo(() => {
-    const totalEstimatedValue = store.properties.reduce((sum: number, p: Property) => {
-      return sum + (p.estimatedValue || p.marketValue);
-    }, 0);
+    // Restschuld
+    const remainingDebt = store.financings.reduce((sum: number, f: Financing) => 
+      sum + f.remainingDebt, 0);
     
-    const totalRemainingDebt = store.financings.reduce((sum: number, f: Financing) => {
-      return sum + f.remainingDebt;
-    }, 0);
-    
-    const totalLoans = store.financings.length;
-    const ltv = totalEstimatedValue > 0 ? (totalRemainingDebt / totalEstimatedValue) * 100 : 0;
-    const equity = totalEstimatedValue - totalRemainingDebt;
-    
-    const getLtvRating = (ltv: number) => {
-      if (ltv <= 60) return { label: 'Sehr gut', color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900' };
-      if (ltv <= 75) return { label: 'Akzeptabel', color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900' };
-      if (ltv <= 85) return { label: 'Kritisch', color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900' };
-      return { label: 'Zu hoch', color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900' };
-    };
-    
-    return { totalEstimatedValue, totalRemainingDebt, totalLoans, ltv, equity, ltvRating: getLtvRating(ltv) };
-  }, [store.properties, store.financings]);
-
-  // ============================================
-  // BERECHNUNGEN - SPALTE 3
-  // ============================================
-  
-  const spalte3Data = useMemo(() => {
-    const monthlyIncome = store.units
+    // Einnahmen
+    const income = store.units
       .filter((u: Unit) => u.status === 'rented')
       .reduce((sum: number, u: Unit) => sum + u.totalRent, 0);
     
-    const monthlyExpenses = stats.totalExpenses || 0;
-    const cashflow = monthlyIncome - monthlyExpenses;
+    // Ausgaben
+    const expenses = stats.totalExpenses || 0;
     
-    return { monthlyIncome, monthlyExpenses, cashflow };
-  }, [store.units, stats]);
-
-  // ============================================
-  // BERECHNUNGEN - SPALTE 4
-  // ============================================
-  
-  const spalte4Data = useMemo(() => {
-    const energyMap: Record<string, number> = { 
-      'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8 
-    };
+    // Cashflow
+    const cashflow = income - expenses;
     
+    // Durchschnittliche Rendite
+    const totalPurchasePrice = store.properties.reduce((sum: number, p) => sum + p.purchasePrice, 0);
+    const avgRoi = totalPurchasePrice > 0 ? ((coldRent * 12) / totalPurchasePrice) * 100 : 0;
+    
+    // LTV
+    const ltv = estimatedValue > 0 ? (remainingDebt / estimatedValue) * 100 : 0;
+    
+    // Energie
+    const energyMap: Record<string, number> = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8 };
     const propertiesWithEnergy = store.properties.filter((p: Property) => p.energyClass !== 'unknown');
-    
     const avgEnergyValue = propertiesWithEnergy.length > 0
       ? propertiesWithEnergy.reduce((sum: number, p: Property) => sum + (energyMap[p.energyClass] || 5), 0) / propertiesWithEnergy.length
       : 0;
+    const avgEnergyLetter = avgEnergyValue > 0 ? String.fromCharCode(64 + Math.round(avgEnergyValue)) : '-';
     
-    const avgEnergyLetter = avgEnergyValue > 0 
-      ? String.fromCharCode(64 + Math.round(avgEnergyValue)) 
-      : '-';
+    // Eigenkapital
+    const equity = estimatedValue - remainingDebt;
     
     return { 
-      avgEnergyValue, 
-      avgEnergyLetter, 
-      propertiesWithEnergyCount: propertiesWithEnergy.length,
-      totalPropertiesCount: store.properties.length
+      totalUnits, rentedUnits, vacantUnits, coldRent, estimatedValue, remainingDebt,
+      income, expenses, cashflow, avgRoi, ltv, avgEnergyLetter, equity
     };
-  }, [store.properties]);
+  }, [store.units, store.properties, store.financings, stats]);
 
   // ============================================
-  // STEP 4a: RENDITE-KENNZAHLEN
+  // RENDITE KENNZAHLEN
   // ============================================
   
-  const renditeKennzahlen = useMemo(() => {
-    const totalPurchasePrice = store.properties.reduce((sum: number, p) => sum + p.purchasePrice, 0);
-    const coldRent = store.units.filter((u: Unit) => u.status === 'rented').reduce((sum: number, u: Unit) => sum + u.baseRent, 0);
+  const renditeData = useMemo(() => {
+    const annualNetIncome = kpiData.cashflow * 12;
+    const bruttoMietRendite = kpiData.avgRoi;
+    const eigenkapitalRendite = kpiData.equity > 0 ? (annualNetIncome / kpiData.equity) * 100 : 0;
+    const cashOnCash = kpiData.equity > 0 ? (annualNetIncome / kpiData.equity) * 100 : 0;
     
-    // Brutto-Mietrendite
-    const bruttoMietRendite = totalPurchasePrice > 0 ? ((coldRent * 12) / totalPurchasePrice) * 100 : 0;
-    
-    // Eigenkapitalrendite (ROE) = Jahres-Netto-Einnahmen / Eigenkapital
-    const annualNetIncome = (spalte3Data.cashflow * 12);
-    const roe = spalte2Data.equity > 0 ? (annualNetIncome / spalte2Data.equity) * 100 : 0;
-    
-    // Cash-on-Cash Return = Jahres-Cashflow / Eigenkapital
-    const annualCashflow = spalte3Data.cashflow * 12;
-    const cashOnCash = spalte2Data.equity > 0 ? (annualCashflow / spalte2Data.equity) * 100 : 0;
-    
-    return { bruttoMietRendite, roe, cashOnCash };
-  }, [store.properties, store.units, spalte2Data.equity, spalte3Data.cashflow]);
+    return { bruttoMietRendite, eigenkapitalRendite, cashOnCash };
+  }, [kpiData]);
 
   // ============================================
-  // STEP 4a: ZINS VS TILGUNG
+  // ZINS VS TILGUNG
   // ============================================
   
-  const interestVsPrincipal = useMemo(() => {
+  const zinsTilgungData = useMemo(() => {
     let totalInterest = 0;
     let totalPrincipal = 0;
     
     store.financings.forEach((f: Financing) => {
-      // Monatlicher Zins = Restschuld * Zinssatz / 12
       const interest = f.remainingDebt * (f.interestRate / 100) / 12;
-      // Tilgung = Monatsrate - Zins
       const principal = f.monthlyRate - interest;
       totalInterest += interest;
       totalPrincipal += Math.max(0, principal);
     });
     
     return [
-      { name: 'Tilgung', value: totalPrincipal, color: CHART_COLORS.principal },
-      { name: 'Zins', value: totalInterest, color: CHART_COLORS.interest }
+      { name: 'Tilgung', value: totalPrincipal, color: COLORS.primary },
+      { name: 'Zins', value: totalInterest, color: COLORS.danger }
     ];
   }, [store.financings]);
 
-  const totalMonthlyRate = useMemo(() => {
-    return store.financings.reduce((sum: number, f: Financing) => sum + f.monthlyRate, 0);
-  }, [store.financings]);
+  const totalMonthlyRate = useMemo(() => 
+    store.financings.reduce((sum: number, f: Financing) => sum + f.monthlyRate, 0),
+    [store.financings]
+  );
 
   // ============================================
-  // STEP 4a: SCHULDENENTWICKLUNG (10 Jahre)
+  // SCHULDENENTWICKLUNG
   // ============================================
   
-  const debtDevelopment = useMemo(() => {
+  const schuldenData = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const data = [];
-    let remainingDebt = spalte2Data.totalRemainingDebt;
-    
-    // Jährliche Tilgung berechnen
-    const yearlyPrincipal = interestVsPrincipal[0].value * 12;
+    let remainingDebt = kpiData.remainingDebt;
+    const yearlyPrincipal = (zinsTilgungData[0].value || 0) * 12;
     
     for (let i = 0; i <= 10; i++) {
-      const equity = spalte2Data.totalEstimatedValue - remainingDebt;
+      const equity = kpiData.estimatedValue - remainingDebt;
       data.push({
         year: currentYear + i,
         schuld: Math.max(0, Math.round(remainingDebt)),
@@ -278,22 +231,18 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
       });
       remainingDebt -= yearlyPrincipal;
     }
-    
     return data;
-  }, [spalte2Data, interestVsPrincipal]);
+  }, [kpiData, zinsTilgungData]);
 
   // ============================================
-  // STEP 4b: PORTFOLIOVERTEILUNG
+  // PORTFOLIOVERTEILUNG NACH STÄDTEN
   // ============================================
   
   const portfolioByCity = useMemo(() => {
     const cityMap: Record<string, { value: number; count: number }> = {};
-    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
     
     store.properties.forEach((p: Property) => {
-      if (!cityMap[p.city]) {
-        cityMap[p.city] = { value: 0, count: 0 };
-      }
+      if (!cityMap[p.city]) cityMap[p.city] = { value: 0, count: 0 };
       cityMap[p.city].value += p.estimatedValue || p.marketValue;
       cityMap[p.city].count++;
     });
@@ -302,53 +251,58 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
       name: city,
       value: data.value,
       count: data.count,
-      color: colors[index % colors.length]
+      color: PIE_COLORS[index % PIE_COLORS.length]
     }));
   }, [store.properties]);
 
   // ============================================
-  // STEP 4b: BESTE RENDITEN
+  // BESTE RENDITEN TABELLE
   // ============================================
   
-  const topRoiProperties = useMemo(() => {
+  const topRenditen = useMemo(() => {
     return store.properties.map((p: Property) => {
       const units = store.units.filter((u: Unit) => u.propertyId === p.id);
       const coldRent = units.filter((u: Unit) => u.status === 'rented').reduce((sum: number, u: Unit) => sum + u.baseRent, 0);
       const roi = p.purchasePrice > 0 ? ((coldRent * 12) / p.purchasePrice) * 100 : 0;
-      return {
-        name: p.name,
-        city: p.city,
-        roi,
-        coldRent,
-        purchasePrice: p.purchasePrice
-      };
+      return { name: p.name, city: p.city, roi, coldRent, purchasePrice: p.purchasePrice };
     }).sort((a, b) => b.roi - a.roi).slice(0, 5);
   }, [store.properties, store.units]);
 
   // ============================================
-  // STEP 4b: WERTSTEIGERUNG
+  // WERTSTEIGERUNG
   // ============================================
   
-  const valueAppreciation = useMemo(() => {
+  const wertsteigerungData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const year = currentYear - i;
+      // Simulierte Wertsteigerung (in echt aus Historie)
+      const totalValue = store.properties.reduce((sum, p) => {
+        const appreciation = ((p.estimatedValue || p.marketValue) - p.purchasePrice) / 5 * (5 - i);
+        return sum + (p.purchasePrice + appreciation);
+      }, 0);
+      years.push({ year, value: totalValue });
+    }
+    
+    return years;
+  }, [store.properties]);
+
+  const topWertsteigerung = useMemo(() => {
     return store.properties.map((p: Property) => {
       const currentValue = p.estimatedValue || p.marketValue;
       const appreciation = currentValue - p.purchasePrice;
       const appreciationPercent = p.purchasePrice > 0 ? (appreciation / p.purchasePrice) * 100 : 0;
-      return {
-        name: p.name,
-        purchasePrice: p.purchasePrice,
-        currentValue,
-        appreciation,
-        appreciationPercent
-      };
-    }).sort((a, b) => b.appreciationPercent - a.appreciationPercent);
+      return { name: p.name, purchasePrice: p.purchasePrice, currentValue, appreciation, appreciationPercent };
+    }).sort((a, b) => b.appreciationPercent - a.appreciationPercent).slice(0, 5);
   }, [store.properties]);
 
   // ============================================
-  // STEP 4c: MONATLICHER CASHFLOW
+  // CASHFLOW DIAGRAMM
   // ============================================
   
-  const monthlyCashflow = useMemo(() => {
+  const cashflowData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
     const currentYear = new Date().getFullYear();
     
@@ -361,100 +315,164 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
       const income = monthTransactions.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + t.amount, 0);
       const expenses = monthTransactions.filter((t: any) => t.type === 'expense').reduce((sum: number, t: any) => sum + t.amount, 0);
       
-      return { month, income, expenses, cashflow: income - expenses };
+      return { month, einnahmen: income, ausgaben: expenses, cashflow: income - expenses };
     });
   }, [store.transactions]);
 
   // ============================================
-  // STEP 4c: AUSGABEN AUFTEILUNG
+  // AUSGABEN DIAGRAMM
   // ============================================
   
-  const expenseBreakdown = useMemo(() => {
-    const categories: Record<string, { value: number; color: number }> = {
-      'Uml. Nebenkosten': { value: 0, color: 0 },
-      'Nicht uml. NK': { value: 0, color: 1 },
-      'Zins': { value: 0, color: 2 },
-      'Tilgung': { value: 0, color: 3 },
-      'Verwaltung': { value: 0, color: 4 },
-      'Instandhaltung': { value: 0, color: 5 }
+  const ausgabenData = useMemo(() => {
+    const categories = {
+      'Uml. Nebenkosten': 0,
+      'Nicht uml. NK': 0,
+      'Zins': 0,
+      'Tilgung': 0,
     };
     
-    const colors = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899'];
-    
-    // Calculate from financings
+    // Aus Financings
     store.financings.forEach((f: Financing) => {
       const interest = f.remainingDebt * (f.interestRate / 100) / 12;
       const principal = f.monthlyRate - interest;
-      categories['Zins'].value += interest;
-      categories['Tilgung'].value += Math.max(0, principal);
+      categories['Zins'] += interest;
+      categories['Tilgung'] += Math.max(0, principal);
     });
     
-    // Calculate from transactions
+    // Aus Transaktionen
     store.transactions.filter((t: any) => t.type === 'expense').forEach((t: any) => {
-      if (t.category === 'utilities') {
-        categories['Uml. Nebenkosten'].value += t.amount;
-      } else if (t.category === 'management') {
-        categories['Verwaltung'].value += t.amount;
-      } else if (t.category === 'repairs') {
-        categories['Instandhaltung'].value += t.amount;
-      } else if (t.category === 'non_recoverable') {
-        categories['Nicht uml. NK'].value += t.amount;
-      }
+      if (t.category === 'utilities') categories['Uml. Nebenkosten'] += t.amount;
+      else if (t.category === 'non_recoverable') categories['Nicht uml. NK'] += t.amount;
     });
     
-    return Object.entries(categories).map(([name, data]) => ({
-      name,
-      value: data.value,
-      color: colors[data.color]
-    }));
+    return [
+      { name: 'Uml. NK', value: categories['Uml. Nebenkosten'], color: COLORS.primary },
+      { name: 'Nicht uml. NK', value: categories['Nicht uml. NK'], color: COLORS.secondary },
+      { name: 'Zins', value: categories['Zins'], color: COLORS.danger },
+      { name: 'Tilgung', value: categories['Tilgung'], color: COLORS.warning },
+    ];
   }, [store.financings, store.transactions]);
 
   // ============================================
-  // STEP 4d: ABSCHREIBUNGEN, STEUERN, MIETVERGLEICH, HAUSGELDER
+  // ABSCHREIBUNGEN
   // ============================================
   
-  const abschreibungenTotal = useMemo(() => {
-    return (store.depreciationItems || []).reduce((sum: number, item: any) => sum + (item.monthlyDepreciation || 0), 0);
+  const abschreibungenData = useMemo(() => {
+    const total = (store.depreciationItems || []).reduce((sum: number, item: any) => 
+      sum + (item.annualDepreciation || 0), 0);
+    
+    const byCategory = [
+      { name: 'Gebäude', value: total * 0.6 },
+      { name: 'Einrichtung', value: total * 0.2 },
+      { name: 'Außenanlage', value: total * 0.15 },
+      { name: 'Sonstige', value: total * 0.05 },
+    ];
+    
+    return { total, byCategory };
   }, [store.depreciationItems]);
 
-  const steuernTotal = useMemo(() => {
+  // ============================================
+  // STEUERN
+  // ============================================
+  
+  const steuernData = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return store.transactions
+    const total = store.transactions
       .filter((t: any) => t.category === 'taxes' && new Date(t.date).getFullYear() === currentYear)
       .reduce((sum: number, t: any) => sum + t.amount, 0);
+    
+    return { total, year: currentYear };
   }, [store.transactions]);
 
-  const hausgelderTotal = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return store.transactions
-      .filter((t: any) => 
-        (t.category === 'management' || t.category === 'repairs') && 
-        new Date(t.date).getFullYear() === currentYear
-      )
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-  }, [store.transactions]);
-
-  const avgRentPerSqm = useMemo(() => {
+  // ============================================
+  // MIETVERGLEICH
+  // ============================================
+  
+  const mietvergleichData = useMemo(() => {
     const rentedUnits = store.units.filter((u: Unit) => u.status === 'rented');
-    if (rentedUnits.length === 0) return 0;
+    if (rentedUnits.length === 0) return { avgRent: 0, localAvg: 8.50, difference: 0 };
     
     const totalRent = rentedUnits.reduce((sum: number, u: Unit) => sum + u.baseRent, 0);
     const totalArea = rentedUnits.reduce((sum: number, u: Unit) => sum + (u.area || 0), 0);
+    const avgRent = totalArea > 0 ? totalRent / totalArea : 0;
+    const localAvg = 8.50; // Durchschnittsmiete Region
+    const difference = avgRent - localAvg;
     
-    return totalArea > 0 ? totalRent / totalArea : 0;
+    return { avgRent, localAvg, difference };
   }, [store.units]);
 
-  const localAvgRent = useMemo(() => {
-    // Durchschnittsmiete für die Region (vereinfacht)
-    return 8.50; // €/qm - sollte durch echte Daten ersetzt werden
-  }, []);
-
   // ============================================
-  // STEP 4e: KAUTIONEN, RÜCKLAGEN, BANKEN, KREDITE, INVESTITIONEN, NEBENKOSTEN
+  // HAUSGELDER
   // ============================================
   
-  const deposits = useMemo(() => {
-    return (store.tenants || []).map((t: any) => {
+  const hausgelderData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const management = store.transactions
+      .filter((t: any) => t.category === 'management' && new Date(t.date).getFullYear() === currentYear)
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+    const repairs = store.transactions
+      .filter((t: any) => t.category === 'repairs' && new Date(t.date).getFullYear() === currentYear)
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+    
+    return { management, repairs, total: management + repairs };
+  }, [store.transactions]);
+
+  // ============================================
+  // SONDERUMLAGEN
+  // ============================================
+  
+  const sonderumlagenData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return store.transactions
+      .filter((t: any) => t.category === 'special_assessment' && new Date(t.date).getFullYear() === currentYear)
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+  }, [store.transactions]);
+
+  // ============================================
+  // NEBENKOSTEN
+  // ============================================
+  
+  const nebenkostenData = useMemo(() => {
+    const umlagefaehig = store.transactions
+      .filter((t: any) => t.category === 'utilities')
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+    const nichtUmlagefaehig = store.transactions
+      .filter((t: any) => t.category === 'non_recoverable')
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+    
+    const details = [
+      { name: 'Wasser', value: umlagefaehig * 0.15 },
+      { name: 'Heizung', value: umlagefaehig * 0.35 },
+      { name: 'Straßenr.', value: umlagefaehig * 0.10 },
+      { name: 'Müll', value: umlagefaehig * 0.10 },
+      { name: 'Versich.', value: umlagefaehig * 0.15 },
+      { name: 'Sonstige', value: umlagefaehig * 0.15 },
+    ];
+    
+    return { umlagefaehig, nichtUmlagefaehig, details };
+  }, [store.transactions]);
+
+  // ============================================
+  // INVESTITIONEN
+  // ============================================
+  
+  const investitionenData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const items = store.transactions
+      .filter((t: any) => t.category === 'repairs' && new Date(t.date).getFullYear() === currentYear)
+      .map((t: any) => ({ description: t.description || 'Investition', amount: t.amount, date: t.date }));
+    
+    const total = items.reduce((sum: number, i: any) => sum + i.amount, 0);
+    
+    return { total, count: items.length, items: items.slice(0, 5) };
+  }, [store.transactions]);
+
+  // ============================================
+  // KAUTIONEN
+  // ============================================
+  
+  const kautionenData = useMemo(() => {
+    const items = (store.tenants || []).map((t: any) => {
       const unit = store.units.find((u: Unit) => u.id === t.unitId);
       const property = store.properties.find((p: Property) => p.id === unit?.propertyId);
       return {
@@ -463,26 +481,52 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         deposit: t.deposit || 0
       };
     }).filter((d: any) => d.deposit > 0);
+    
+    const total = items.reduce((sum: number, i: any) => sum + i.deposit, 0);
+    
+    return { total, count: items.length, items };
   }, [store.tenants, store.units, store.properties]);
 
-  const ruecklagenTotal = useMemo(() => {
-    return store.transactions
+  // ============================================
+  // RÜCKLAGEN
+  // ============================================
+  
+  const ruecklagenData = useMemo(() => {
+    const total = store.transactions
       .filter((t: any) => t.category === 'reserves')
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
+      .reduce((sum: number, t: any) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
+    
+    const byCategory = [
+      { name: 'Instandhaltung', value: Math.max(0, total * 0.4) },
+      { name: 'Modernisierung', value: Math.max(0, total * 0.25) },
+      { name: 'Mietausfall', value: Math.max(0, total * 0.20) },
+      { name: 'Sonstige', value: Math.max(0, total * 0.15) },
+    ];
+    
+    return { total, byCategory };
   }, [store.transactions]);
 
-  const ruecklagenByCategory = useMemo(() => {
-    // Beispiel-Kategorien für Rücklagen
-    return [
-      { name: 'Instandhaltung', value: ruecklagenTotal * 0.4 },
-      { name: 'Modernisierung', value: ruecklagenTotal * 0.3 },
-      { name: 'Mietausfall', value: ruecklagenTotal * 0.2 },
-      { name: 'Sonstige', value: ruecklagenTotal * 0.1 }
-    ];
-  }, [ruecklagenTotal]);
+  // ============================================
+  // GRUNDSTÜCKSWERTE
+  // ============================================
+  
+  const grundstueckData = useMemo(() => {
+    const total = store.properties.reduce((sum: number, p: Property) => {
+      // Geschätzter Grundstückswert (ca. 30% vom Gesamtwert)
+      return sum + ((p.estimatedValue || p.marketValue) * 0.3);
+    }, 0);
+    
+    return { total, count: store.properties.length };
+  }, [store.properties]);
 
-  const bankLoans = useMemo(() => {
-    return store.financings.map((f: Financing) => {
+  // ============================================
+  // BANKEN & KREDITE
+  // ============================================
+  
+  const bankenData = useMemo(() => {
+    const uniqueBanks = new Set(store.financings.map((f: Financing) => f.bankName));
+    
+    const loans = store.financings.map((f: Financing) => {
       const property = store.properties.find((p: Property) => p.id === f.propertyId);
       return {
         bank: f.bankName,
@@ -493,312 +537,216 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         interest: f.interestRate
       };
     });
+    
+    const totalDebt = store.financings.reduce((sum: number, f: Financing) => sum + f.remainingDebt, 0);
+    const totalRate = store.financings.reduce((sum: number, f: Financing) => sum + f.monthlyRate, 0);
+    
+    return { 
+      bankCount: uniqueBanks.size, 
+      loanCount: store.financings.length,
+      totalDebt,
+      totalRate,
+      loans 
+    };
   }, [store.financings, store.properties]);
 
-  const bankCount = useMemo(() => {
-    const uniqueBanks = new Set(store.financings.map((f: Financing) => f.bankName));
-    return uniqueBanks.size;
-  }, [store.financings]);
-
-  const investitionenTotal = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return store.transactions
-      .filter((t: any) => 
-        t.category === 'repairs' && 
-        (t.description?.toLowerCase().includes('invest') || t.isInvestment) &&
-        new Date(t.date).getFullYear() === currentYear
-      )
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-  }, [store.transactions]);
-
-  const investitionenCount = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return store.transactions
-      .filter((t: any) => 
-        t.category === 'repairs' && 
-        (t.description?.toLowerCase().includes('invest') || t.isInvestment) &&
-        new Date(t.date).getFullYear() === currentYear
-      ).length;
-  }, [store.transactions]);
-
-  const investitionenRecent = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return store.transactions
-      .filter((t: any) => 
-        t.category === 'repairs' && 
-        (t.description?.toLowerCase().includes('invest') || t.isInvestment) &&
-        new Date(t.date).getFullYear() === currentYear
-      )
-      .map((t: any) => ({
-        description: t.description || 'Investition',
-        amount: t.amount
-      }))
-      .slice(0, 3);
-  }, [store.transactions]);
-
-  const nebenkostenUml = useMemo(() => {
-    return store.transactions
-      .filter((t: any) => t.type === 'expense' && t.category === 'utilities')
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-  }, [store.transactions]);
-
-  const nebenkostenNichtUml = useMemo(() => {
-    return store.transactions
-      .filter((t: any) => t.type === 'expense' && t.category === 'non_recoverable')
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-  }, [store.transactions]);
-
-  const nebenkostenDetails = useMemo(() => {
-    // Beispiel-Detaillierung der Nebenkosten
-    return [
-      { name: 'Wasser', value: nebenkostenUml * 0.15, umlagefaehig: true },
-      { name: 'Heizung', value: nebenkostenUml * 0.35, umlagefaehig: true },
-      { name: 'Straßenreinigung', value: nebenkostenUml * 0.10, umlagefaehig: true },
-      { name: 'Müllabfuhr', value: nebenkostenUml * 0.10, umlagefaehig: true },
-      { name: 'Verwaltung', value: nebenkostenNichtUml * 0.5, umlagefaehig: false },
-      { name: 'Instandhaltung', value: nebenkostenNichtUml * 0.5, umlagefaehig: false }
-    ];
-  }, [nebenkostenUml, nebenkostenNichtUml]);
+  // ============================================
+  // RENDER
+  // ============================================
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Willkommen bei Bucki</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Portfolio-Übersicht</p>
       </div>
 
       {/* ============================================ */}
-      {/* 4 SPALTEN - KPI CARDS */}
+      {/* KPI CARDS - 3x3 GRID */}
       {/* ============================================ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        
-        {/* SPALTE 1 */}
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
-                <DoorOpen className="h-4 w-4" />
-                <span className="text-sm font-medium">Wohneinheiten</span>
-              </div>
-              <div className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                {spalte1Data.rentedUnits}/{spalte1Data.totalUnits}
-              </div>
-              <div className="text-sm text-blue-600 dark:text-blue-400">
-                {spalte1Data.vacantUnits} leerstehend
-              </div>
-              <div className="mt-2 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 transition-all duration-500" 
-                  style={{ width: `${spalte1Data.totalUnits > 0 ? (spalte1Data.rentedUnits / spalte1Data.totalUnits) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-blue-200 dark:border-blue-700" />
-
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
-                <DollarSign className="h-4 w-4" />
-                <span className="text-sm font-medium">Kaltmiete</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                {formatCurrency(spalte1Data.coldRent)}
-              </div>
-              <div className="text-sm text-blue-600 dark:text-blue-400">monatlich</div>
-            </div>
-
-            <div className="border-t border-blue-200 dark:border-blue-700" />
-
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-medium">Ø Rendite</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                {spalte1Data.avgRoi.toFixed(2)}%
-              </div>
-              <div className="text-sm text-blue-600 dark:text-blue-400">Brutto-Mietrendite p.a.</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SPALTE 2 */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
-                <Building2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Schätzwert</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                {formatCurrency(spalte2Data.totalEstimatedValue)}
-              </div>
-              <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                {store.properties.length} Immobilien
-              </div>
-            </div>
-
-            <div className="border-t border-emerald-200 dark:border-emerald-700" />
-
-            <div>
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
-                <CreditCard className="h-4 w-4" />
-                <span className="text-sm font-medium">Restschuld</span>
-              </div>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(spalte2Data.totalRemainingDebt)}
-              </div>
-              <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                {spalte2Data.totalLoans} Kredite
-              </div>
-            </div>
-
-            <div className="border-t border-emerald-200 dark:border-emerald-700" />
-
-            <div>
-              <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
-                <Percent className="h-4 w-4" />
-                <span className="text-sm font-medium">LTV</span>
-              </div>
-              <LTVGauge ltv={spalte2Data.ltv} />
-              <div className="text-center mt-2">
-                <span className={`px-2 py-1 rounded text-xs font-medium ${spalte2Data.ltvRating.bg} ${spalte2Data.ltvRating.color}`}>
-                  {spalte2Data.ltvRating.label}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SPALTE 3 */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
-          <CardContent className="pt-6 space-y-4">
-            <div>
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
-                <ArrowUpRight className="h-4 w-4" />
-                <span className="text-sm font-medium">Einnahmen</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-600">
-                {formatCurrency(spalte3Data.monthlyIncome)}
-              </div>
-              <div className="text-sm text-purple-600 dark:text-purple-400">monatlich</div>
-            </div>
-
-            <div className="border-t border-purple-200 dark:border-purple-700" />
-
-            <div>
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
-                <ArrowDownRight className="h-4 w-4" />
-                <span className="text-sm font-medium">Ausgaben</span>
-              </div>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(spalte3Data.monthlyExpenses)}
-              </div>
-              <div className="text-sm text-purple-600 dark:text-purple-400">monatlich</div>
-            </div>
-
-            <div className="border-t border-purple-200 dark:border-purple-700" />
-
-            <div>
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
-                <Wallet className="h-4 w-4" />
-                <span className="text-sm font-medium">Cashflow</span>
-              </div>
-              <div className={`text-2xl font-bold ${spalte3Data.cashflow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {spalte3Data.cashflow >= 0 ? '+' : ''}{formatCurrency(spalte3Data.cashflow)}
-              </div>
-              <div className="text-sm text-purple-600 dark:text-purple-400">monatlich</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SPALTE 4 */}
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 border-amber-200 dark:border-amber-800">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Reihe 1 */}
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-3">
-              <Zap className="h-4 w-4" />
-              <span className="text-sm font-medium">Ø Energiewert</span>
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-2">
+              <DoorOpen className="h-4 w-4" />
+              <span className="text-sm font-medium">Wohneinheiten</span>
             </div>
-            
-            <div className="flex items-center gap-4 mb-4">
-              <div className={`text-6xl font-bold ${
-                spalte4Data.avgEnergyLetter <= 'C' ? 'text-green-600' :
-                spalte4Data.avgEnergyLetter <= 'E' ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {spalte4Data.avgEnergyLetter}
-              </div>
-              <div className="flex-1">
-                <div className="text-sm text-amber-700 dark:text-amber-300 font-medium">Durchschnitt</div>
-                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  {spalte4Data.propertiesWithEnergyCount} von {spalte4Data.totalPropertiesCount} Immobilien
-                </div>
-              </div>
+            <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+              {kpiData.rentedUnits}/{kpiData.totalUnits}
             </div>
+            <p className="text-sm text-blue-600 dark:text-blue-400">{kpiData.vacantUnits} leerstehend</p>
+            <div className="mt-2 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 transition-all" style={{ width: `${kpiData.totalUnits > 0 ? (kpiData.rentedUnits / kpiData.totalUnits) * 100 : 0}%` }} />
+            </div>
+          </CardContent>
+        </Card>
 
-            <div className="flex gap-1">
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
+              <Building2 className="h-4 w-4" />
+              <span className="text-sm font-medium">Schätzwert</span>
+            </div>
+            <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+              {formatCurrency(kpiData.estimatedValue)}
+            </div>
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">{store.properties.length} Immobilien</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-2">
+              <ArrowUpRight className="h-4 w-4" />
+              <span className="text-sm font-medium">Einnahmen</span>
+            </div>
+            <div className="text-3xl font-bold text-purple-700 dark:text-purple-300">
+              {formatCurrency(kpiData.income)}
+            </div>
+            <p className="text-sm text-purple-600 dark:text-purple-400">monatlich</p>
+          </CardContent>
+        </Card>
+
+        {/* Reihe 2 */}
+        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 mb-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-sm font-medium">Kaltmiete</span>
+            </div>
+            <div className="text-3xl font-bold text-cyan-700 dark:text-cyan-300">
+              {formatCurrency(kpiData.coldRent)}
+            </div>
+            <p className="text-sm text-cyan-600 dark:text-cyan-400">monatlich</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="text-sm font-medium">Restschuld</span>
+            </div>
+            <div className="text-3xl font-bold text-red-700 dark:text-red-300">
+              {formatCurrency(kpiData.remainingDebt)}
+            </div>
+            <p className="text-sm text-red-600 dark:text-red-400">{bankenData.loanCount} Kredite</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-2">
+              <ArrowDownRight className="h-4 w-4" />
+              <span className="text-sm font-medium">Ausgaben</span>
+            </div>
+            <div className="text-3xl font-bold text-orange-700 dark:text-orange-300">
+              {formatCurrency(kpiData.expenses)}
+            </div>
+            <p className="text-sm text-orange-600 dark:text-orange-400">monatlich</p>
+          </CardContent>
+        </Card>
+
+        {/* Reihe 3 */}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-sm font-medium">Durchsch. Rendite</span>
+            </div>
+            <div className="text-3xl font-bold text-green-700 dark:text-green-300">
+              {kpiData.avgRoi.toFixed(2)}%
+            </div>
+            <p className="text-sm text-green-600 dark:text-green-400">Brutto p.a.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-2">
+              <Percent className="h-4 w-4" />
+              <span className="text-sm font-medium">LTV</span>
+            </div>
+            <LTVGauge ltv={kpiData.ltv} />
+            <p className="text-sm text-indigo-600 dark:text-indigo-400 text-center mt-1">Loan-to-Value</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950 dark:to-pink-900">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 mb-2">
+              <Wallet className="h-4 w-4" />
+              <span className="text-sm font-medium">Cashflow</span>
+            </div>
+            <div className={`text-3xl font-bold ${kpiData.cashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {kpiData.cashflow >= 0 ? '+' : ''}{formatCurrency(kpiData.cashflow)}
+            </div>
+            <p className="text-sm text-pink-600 dark:text-pink-400">monatlich</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* E-Wert Card */}
+      <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 max-w-xs">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+            <Zap className="h-4 w-4" />
+            <span className="text-sm font-medium">E-Wert (Ø Energie)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`text-4xl font-bold ${
+              kpiData.avgEnergyLetter <= 'C' ? 'text-green-600' :
+              kpiData.avgEnergyLetter <= 'E' ? 'text-yellow-600' : 'text-red-600'
+            }`}>
+              {kpiData.avgEnergyLetter}
+            </div>
+            <div className="flex gap-0.5">
               {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter) => (
                 <div 
                   key={letter}
-                  className={`flex-1 h-8 rounded flex items-center justify-center text-xs font-bold ${
-                    letter === spalte4Data.avgEnergyLetter ? 'ring-2 ring-amber-500 ring-offset-1 scale-110' : ''
-                  } ${
-                    letter <= 'C' ? 'bg-green-500 text-white' :
-                    letter <= 'E' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
-                  }`}
+                  className={`w-5 h-6 rounded flex items-center justify-center text-[10px] font-bold ${
+                    letter === kpiData.avgEnergyLetter ? 'ring-2 ring-amber-500 scale-110' : ''
+                  } ${letter <= 'C' ? 'bg-green-500 text-white' : letter <= 'E' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'}`}
                 >
                   {letter}
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ============================================ */}
-      {/* STEP 4a: DIAGRAMME */}
+      {/* DIAGRAMME - REIHE 1 */}
       {/* ============================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Rendite-Kennzahlen */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Target className="h-5 w-5 text-blue-500" />
-              Rendite-Kennzahlen
+              Rendite / Kennzahlen
             </CardTitle>
-            <CardDescription>Übersicht Ihrer wichtigsten Rendite-Metriken</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-around py-4">
-              <RenditeGauge 
-                value={renditeKennzahlen.bruttoMietRendite} 
-                label="Brutto-Mietrendite" 
-              />
-              <RenditeGauge 
-                value={renditeKennzahlen.roe} 
-                label="Eigenkapitalrendite" 
-              />
-              <RenditeGauge 
-                value={renditeKennzahlen.cashOnCash} 
-                label="Cash-on-Cash" 
-              />
+            <div className="flex justify-around py-2">
+              <RenditeGauge value={renditeData.bruttoMietRendite} label="Brutto-Mietrendite" />
+              <RenditeGauge value={renditeData.eigenkapitalRendite} label="EK-Rendite" />
             </div>
-            
-            <div className="border-t pt-3 mt-2 space-y-2">
-              <div className="flex items-center justify-between text-sm">
+            <div className="border-t pt-3 mt-2 space-y-2 text-sm">
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Brutto-Mietrendite</span>
-                <span className="font-medium">{renditeKennzahlen.bruttoMietRendite.toFixed(2)}%</span>
+                <span className="font-medium">{renditeData.bruttoMietRendite.toFixed(2)}%</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Eigenkapitalrendite</span>
-                <span className="font-medium">{renditeKennzahlen.roe.toFixed(2)}%</span>
+                <span className="font-medium">{renditeData.eigenkapitalRendite.toFixed(2)}%</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Cash-on-Cash</span>
-                <span className="font-medium">{renditeKennzahlen.cashOnCash.toFixed(2)}%</span>
+                <span className="font-medium">{renditeData.cashOnCash.toFixed(2)}%</span>
               </div>
             </div>
           </CardContent>
@@ -811,69 +759,45 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
               <PieChart className="h-5 w-5 text-purple-500" />
               Zins vs Tilgung
             </CardTitle>
-            <CardDescription>Monatliche Kreditrate: {formatCurrency(totalMonthlyRate)}</CardDescription>
+            <CardDescription>Monatliche Rate: {formatCurrency(totalMonthlyRate)}</CardDescription>
           </CardHeader>
           <CardContent>
             {totalMonthlyRate > 0 ? (
               <>
-                <div className="h-48">
+                <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPie>
                       <Pie
-                        data={interestVsPrincipal}
+                        data={zinsTilgungData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
+                        innerRadius={40}
+                        outerRadius={60}
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {interestVsPrincipal.map((entry, index) => (
+                        {zinsTilgungData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
                     </RechartsPie>
                   </ResponsiveContainer>
                 </div>
                 <div className="flex justify-center gap-6 mt-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS.principal }} />
-                    <span className="text-sm text-muted-foreground">Tilgung</span>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+                    <span className="text-sm">Tilgung</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS.interest }} />
-                    <span className="text-sm text-muted-foreground">Zins</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-emerald-600">
-                      {formatCurrency(interestVsPrincipal[0].value)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Tilgung / Monat</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-red-500">
-                      {formatCurrency(interestVsPrincipal[1].value)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Zins / Monat</div>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.danger }} />
+                    <span className="text-sm">Zins</span>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <CreditCard className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Finanzierungen vorhanden</p>
-                </div>
+              <div className="h-40 flex items-center justify-center text-muted-foreground">
+                Keine Finanzierungen
               </div>
             )}
           </CardContent>
@@ -884,82 +808,27 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <LineChart className="h-5 w-5 text-emerald-500" />
-              Schuldentwicklung
+              Schuldendiagram
             </CardTitle>
-            <CardDescription>Prognose für die nächsten 10 Jahre</CardDescription>
+            <CardDescription>Prognose 10 Jahre</CardDescription>
           </CardHeader>
           <CardContent>
-            {spalte2Data.totalRemainingDebt > 0 ? (
-              <>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={debtDevelopment}>
-                      <defs>
-                        <linearGradient id="colorSchuld" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={CHART_COLORS.debt} stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor={CHART_COLORS.debt} stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorEigenkapital" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={CHART_COLORS.equity} stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor={CHART_COLORS.equity} stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="year" 
-                        tick={{ fontSize: 11 }} 
-                        className="text-muted-foreground"
-                        tickFormatter={(value) => `'${String(value).slice(-2)}`}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11 }} 
-                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                        className="text-muted-foreground"
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                        formatter={(value: number) => formatCurrency(value)}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="schuld" 
-                        stroke={CHART_COLORS.debt} 
-                        strokeWidth={2} 
-                        fill="url(#colorSchuld)" 
-                        name="Restschuld" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="eigenkapital" 
-                        stroke={CHART_COLORS.equity} 
-                        strokeWidth={2} 
-                        fill="url(#colorEigenkapital)" 
-                        name="Eigenkapital" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex justify-center gap-6 mt-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS.debt }} />
-                    <span className="text-sm text-muted-foreground">Restschuld</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS.equity }} />
-                    <span className="text-sm text-muted-foreground">Eigenkapital</span>
-                  </div>
-                </div>
-              </>
+            {kpiData.remainingDebt > 0 ? (
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={schuldenData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="year" tick={{ fontSize: 10 }} tickFormatter={(v) => `'${String(v).slice(-2)}`} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    <Area type="monotone" dataKey="schuld" stroke={COLORS.danger} fill={COLORS.danger} fillOpacity={0.2} name="Schuld" />
+                    <Area type="monotone" dataKey="eigenkapital" stroke={COLORS.primary} fill={COLORS.primary} fillOpacity={0.2} name="Eigenkapital" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Schuldenfrei!</p>
-                </div>
+              <div className="h-40 flex items-center justify-center text-muted-foreground">
+                Keine Schulden
               </div>
             )}
           </CardContent>
@@ -967,605 +836,399 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
       </div>
 
       {/* ============================================ */}
-      {/* STEP 4b: PORTFOLIOVERTEILUNG & TABELLEN */}
+      {/* DIAGRAMME - REIHE 2 */}
       {/* ============================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Portfolioverteilung nach Stadt */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Portfolioverteilung nach Städten */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="h-5 w-5 text-emerald-500" />
-              Portfolioverteilung
+              <MapPin className="h-5 w-5 text-blue-500" />
+              Portfolioverteilung nach Städten
             </CardTitle>
-            <CardDescription>Nach Standort</CardDescription>
           </CardHeader>
           <CardContent>
             {portfolioByCity.length > 0 ? (
-              <>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPie>
-                      <Pie
-                        data={portfolioByCity}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={70}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        labelLine={false}
-                      >
-                        {portfolioByCity.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                    </RechartsPie>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-2 pt-3 border-t">
-                  {portfolioByCity.slice(0, 4).map((city, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: city.color }} />
-                        <span className="text-muted-foreground">{city.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{formatCurrency(city.value)}</span>
-                        <span className="text-xs text-muted-foreground">({city.count})</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPie>
+                    <Pie
+                      data={portfolioByCity}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    >
+                      {portfolioByCity.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  </RechartsPie>
+                </ResponsiveContainer>
+              </div>
             ) : (
               <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Immobilien vorhanden</p>
-                </div>
+                Keine Immobilien
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Beste Renditen Tabelle */}
+        {/* Tabelle mit besten Renditen */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5 text-green-500" />
+              Beste Renditen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {topRenditen.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.city}</p>
+                  </div>
+                  <Badge variant={item.roi >= 5 ? 'default' : item.roi >= 3 ? 'secondary' : 'outline'}>
+                    {item.roi.toFixed(2)}%
+                  </Badge>
+                </div>
+              ))}
+              {topRenditen.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">Keine Daten</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ============================================ */}
+      {/* DIAGRAMME - REIHE 3 */}
+      {/* ============================================ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Wertsteigerung seit Kauf */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-5 w-5 text-purple-500" />
+              Wertsteigerung seit Kauf
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={wertsteigerungData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Area type="monotone" dataKey="value" stroke={COLORS.purple} fill={COLORS.purple} fillOpacity={0.3} name="Portfoliowert" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabelle mit größter Wertsteigerung */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <TrendingUp className="h-5 w-5 text-emerald-500" />
-              Beste Renditen
+              Größte Wertsteigerung
             </CardTitle>
-            <CardDescription>Top 5 Immobilien nach Rendite</CardDescription>
           </CardHeader>
           <CardContent>
-            {topRoiProperties.length > 0 ? (
-              <div className="space-y-2">
-                {topRoiProperties.map((property, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                        index === 0 ? 'bg-yellow-500 text-white' :
-                        index === 1 ? 'bg-gray-400 text-white' :
-                        index === 2 ? 'bg-amber-600 text-white' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">{property.name}</div>
-                        <div className="text-xs text-muted-foreground">{property.city}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-emerald-600">{property.roi.toFixed(2)}%</div>
-                      <div className="text-xs text-muted-foreground">{formatCurrency(property.coldRent)}/Mo.</div>
-                    </div>
+            <div className="space-y-2">
+              {topWertsteigerung.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(item.purchasePrice)} → {formatCurrency(item.currentValue)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Immobilien vorhanden</p>
+                  <Badge variant={item.appreciationPercent > 0 ? 'default' : 'destructive'}>
+                    {item.appreciationPercent > 0 ? '+' : ''}{item.appreciationPercent.toFixed(1)}%
+                  </Badge>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Wertsteigerung Tabelle */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ArrowUpRight className="h-5 w-5 text-blue-500" />
-              Wertsteigerung
-            </CardTitle>
-            <CardDescription>Seit Kauf (sortiert nach %)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {valueAppreciation.length > 0 ? (
-              <div className="space-y-2">
-                {valueAppreciation.slice(0, 5).map((property, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <div className="font-medium text-sm">{property.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatCurrency(property.purchasePrice)} → {formatCurrency(property.currentValue)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-bold ${property.appreciation >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {property.appreciation >= 0 ? '+' : ''}{formatCurrency(property.appreciation)}
-                      </div>
-                      <div className={`text-xs ${property.appreciationPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {property.appreciationPercent >= 0 ? '+' : ''}{property.appreciationPercent.toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <ArrowUpRight className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Immobilien vorhanden</p>
-                </div>
-              </div>
-            )}
+              ))}
+              {topWertsteigerung.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">Keine Daten</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* ============================================ */}
-      {/* STEP 4c: CASHFLOW, AUSGABEN, EIGENKAPITALRENDITE */}
+      {/* DIAGRAMME - REIHE 4 */}
       {/* ============================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Monatlicher Cashflow (12 Monate) */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Wallet className="h-5 w-5 text-purple-500" />
-              Cashflow Übersicht
-            </CardTitle>
-            <CardDescription>Monatlicher Verlauf (letztes Jahr)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {monthlyCashflow.length > 0 ? (
-              <>
-                <div className="h-52">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyCashflow}>
-                      <defs>
-                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorCashflow" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="month" 
-                        tick={{ fontSize: 11 }} 
-                        className="text-muted-foreground"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11 }} 
-                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                        className="text-muted-foreground"
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                        formatter={(value: number) => formatCurrency(value)}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="income" 
-                        stroke="#10b981" 
-                        strokeWidth={2} 
-                        fill="url(#colorIncome)" 
-                        name="Einnahmen" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="expenses" 
-                        stroke="#ef4444" 
-                        strokeWidth={2} 
-                        fill="url(#colorExpenses)" 
-                        name="Ausgaben" 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="cashflow" 
-                        stroke="#8b5cf6" 
-                        strokeWidth={2} 
-                        fill="url(#colorCashflow)" 
-                        name="Cashflow" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex justify-center gap-6 mt-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span className="text-sm text-muted-foreground">Einnahmen</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    <span className="text-sm text-muted-foreground">Ausgaben</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-purple-500" />
-                    <span className="text-sm text-muted-foreground">Cashflow</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="h-52 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Wallet className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Daten vorhanden</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Ausgaben Aufteilung */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cashflow Diagramm */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <ArrowDownRight className="h-5 w-5 text-red-500" />
-              Ausgaben Aufteilung
+              <Wallet className="h-5 w-5 text-cyan-500" />
+              Cashflow
             </CardTitle>
-            <CardDescription>Monatliche Kostenstruktur</CardDescription>
           </CardHeader>
           <CardContent>
-            {expenseBreakdown.length > 0 && expenseBreakdown.some(e => e.value > 0) ? (
-              <>
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPie>
-                      <Pie
-                        data={expenseBreakdown.filter(e => e.value > 0)}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={35}
-                        outerRadius={60}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {expenseBreakdown.filter(e => e.value > 0).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                    </RechartsPie>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-2 pt-3 border-t">
-                  {expenseBreakdown.filter(e => e.value > 0).map((expense, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: expense.color }} />
-                        <span className="text-muted-foreground">{expense.name}</span>
-                      </div>
-                      <span className="font-medium">{formatCurrency(expense.value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="h-40 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <ArrowDownRight className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine Ausgaben</p>
-                </div>
-              </div>
-            )}
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={cashflowData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Bar dataKey="einnahmen" fill={COLORS.primary} name="Einnahmen" />
+                  <Bar dataKey="ausgaben" fill={COLORS.danger} name="Ausgaben" />
+                  <Line type="monotone" dataKey="cashflow" stroke={COLORS.purple} strokeWidth={2} name="Cashflow" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ausgaben Diagramm */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Receipt className="h-5 w-5 text-orange-500" />
+              Ausgaben / Kostenarten
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPie>
+                  <Pie
+                    data={ausgabenData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={70}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  >
+                    {ausgabenData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                </RechartsPie>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* ============================================ */}
-      {/* STEP 4d: ABSCHREIBUNGEN, STEUERN, MIETVERGLEICH, HAUSGELDER */}
+      {/* KPI GRID - WEITERE KENNZAHLEN */}
       {/* ============================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Eigenkapitalrendite */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-sm font-medium">Eigenkapitalrendite</span>
+            </div>
+            <div className="text-2xl font-bold">{renditeData.eigenkapitalRendite.toFixed(2)}%</div>
+            <p className="text-xs text-muted-foreground">ROE auf Eigenkapital</p>
+          </CardContent>
+        </Card>
+
         {/* Abschreibungen */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingDown className="h-5 w-5 text-blue-500" />
-              Abschreibungen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(abschreibungenTotal)}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <FileText className="h-4 w-4" />
+              <span className="text-sm font-medium">Abschreibungen</span>
             </div>
-            <div className="text-sm text-muted-foreground">monatlich</div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              {store.depreciationItems?.length || 0} Positionen
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(abschreibungenData.total)}</div>
+            <p className="text-xs text-muted-foreground">jährlich</p>
           </CardContent>
         </Card>
 
         {/* Steuern */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="h-5 w-5 text-red-500" />
-              Steuern
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(steuernTotal)}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Receipt className="h-4 w-4" />
+              <span className="text-sm font-medium">Steuern</span>
             </div>
-            <div className="text-sm text-muted-foreground">dieses Jahr</div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              Grundsteuer + Einkommensteuer
+            <div className="text-2xl font-bold">{formatCurrency(steuernData.total)}</div>
+            <p className="text-xs text-muted-foreground">Jahr {steuernData.year}</p>
+          </CardContent>
+        </Card>
+
+        {/* Kaltmiete vs Vergleichsmieten */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-sm font-medium">Kaltmiete vs Ø</span>
             </div>
+            <div className="text-2xl font-bold">{mietvergleichData.avgRent.toFixed(2)} €/m²</div>
+            <p className="text-xs text-muted-foreground">
+              Ø {mietvergleichData.localAvg.toFixed(2)} €/m² | 
+              <span className={mietvergleichData.difference >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {mietvergleichData.difference >= 0 ? '+' : ''}{mietvergleichData.difference.toFixed(2)} €
+              </span>
+            </p>
           </CardContent>
         </Card>
 
         {/* Hausgelder */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="h-5 w-5 text-amber-500" />
-              Hausgelder
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {formatCurrency(hausgelderTotal)}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Home className="h-4 w-4" />
+              <span className="text-sm font-medium">Hausgelder</span>
             </div>
-            <div className="text-sm text-muted-foreground">dieses Jahr</div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              Verwaltung & Instandhaltung
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(hausgelderData.total)}</div>
+            <p className="text-xs text-muted-foreground">Verwaltung: {formatCurrency(hausgelderData.management)}</p>
           </CardContent>
         </Card>
 
-        {/* Mietvergleich */}
+        {/* Sonderumlagen */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-5 w-5 text-emerald-500" />
-              Ø Miete/qm
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {avgRentPerSqm.toFixed(2)} €
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Receipt className="h-4 w-4" />
+              <span className="text-sm font-medium">Sonderumlagen</span>
             </div>
-            <div className="text-sm text-muted-foreground">Kaltmiete</div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              Vergleich: Ø {localAvgRent.toFixed(2)} €/qm
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(sonderumlagenData)}</div>
+            <p className="text-xs text-muted-foreground">dieses Jahr</p>
           </CardContent>
         </Card>
-      </div>
 
-      {/* ============================================ */}
-      {/* STEP 4e: NEBENKOSTEN, INVESTITIONEN, KAUTIONEN, RÜCKLAGEN, BANKEN, KREDITE */}
-      {/* ============================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+        {/* Nebenkosten */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Zap className="h-4 w-4" />
+              <span className="text-sm font-medium">Nebenkosten</span>
+            </div>
+            <div className="text-2xl font-bold">{formatCurrency(nebenkostenData.umlagefaehig + nebenkostenData.nichtUmlagefaehig)}</div>
+            <p className="text-xs text-muted-foreground">
+              Uml: {formatCurrency(nebenkostenData.umlagefaehig)} | Nicht uml: {formatCurrency(nebenkostenData.nichtUmlagefaehig)}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Investitionen */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Wrench className="h-4 w-4" />
+              <span className="text-sm font-medium">Investitionen</span>
+            </div>
+            <div className="text-2xl font-bold">{formatCurrency(investitionenData.total)}</div>
+            <p className="text-xs text-muted-foreground">{investitionenData.count} Positionen</p>
+          </CardContent>
+        </Card>
+
         {/* Kautionen */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Wallet className="h-5 w-5 text-emerald-500" />
-              Kautionen
-            </CardTitle>
-            <CardDescription>Hinterlegte Sicherheitsleistungen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {deposits.length > 0 ? (
-              <>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {deposits.slice(0, 5).map((d, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                      <div>
-                        <div className="font-medium text-sm">{d.tenant}</div>
-                        <div className="text-xs text-muted-foreground">{d.property}</div>
-                      </div>
-                      <div className="font-bold text-emerald-600">{formatCurrency(d.deposit)}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="pt-2 mt-2 border-t flex justify-between font-medium">
-                  <span>Gesamt</span>
-                  <span className="text-emerald-600">{formatCurrency(deposits.reduce((sum, d) => sum + d.deposit, 0))}</span>
-                </div>
-              </>
-            ) : (
-              <div className="h-32 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Kautionen</p>
-                </div>
-              </div>
-            )}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Shield className="h-4 w-4" />
+              <span className="text-sm font-medium">Kautionen</span>
+            </div>
+            <div className="text-2xl font-bold">{formatCurrency(kautionenData.total)}</div>
+            <p className="text-xs text-muted-foreground">{kautionenData.count} Mieter</p>
           </CardContent>
         </Card>
 
         {/* Rücklagen */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-5 w-5 text-amber-500" />
-              Rücklagen
-            </CardTitle>
-            <CardDescription>Angesparte Rückstellungen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-600 mb-2">
-              {formatCurrency(ruecklagenTotal)}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <PiggyBank className="h-4 w-4" />
+              <span className="text-sm font-medium">Rücklagen</span>
             </div>
-            <div className="space-y-2">
-              {ruecklagenByCategory.map((r, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{r.name}</span>
-                  <span className="font-medium">{formatCurrency(r.value)}</span>
-                </div>
-              ))}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(ruecklagenData.total)}</div>
+            <p className="text-xs text-muted-foreground">Rücklagenkonto</p>
           </CardContent>
         </Card>
 
-        {/* Banken & Kredite */}
+        {/* Grundstückswerte */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="h-5 w-5 text-purple-500" />
-              Banken & Kredite
-            </CardTitle>
-            <CardDescription>Übersicht aller Finanzierungen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {bankLoans.length > 0 ? (
-              <>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {bankLoans.slice(0, 5).map((loan, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                      <div>
-                        <div className="font-medium text-sm">{loan.bank}</div>
-                        <div className="text-xs text-muted-foreground">{loan.property}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-red-600">{formatCurrency(loan.remaining)}</div>
-                        <div className="text-xs text-muted-foreground">{formatCurrency(loan.rate)}/Mo. @ {loan.interest}%</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-2 mt-2 border-t">
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{bankCount}</div>
-                    <div className="text-xs text-muted-foreground">Banken</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{store.financings.length}</div>
-                    <div className="text-xs text-muted-foreground">Kredite</div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="h-32 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Kredite</p>
-                </div>
-              </div>
-            )}
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Landmark className="h-4 w-4" />
+              <span className="text-sm font-medium">Grundstückswerte</span>
+            </div>
+            <div className="text-2xl font-bold">{formatCurrency(grundstueckData.total)}</div>
+            <p className="text-xs text-muted-foreground">{grundstueckData.count} Grundstücke (ca. 30%)</p>
+          </CardContent>
+        </Card>
+
+        {/* Banken */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Landmark className="h-4 w-4" />
+              <span className="text-sm font-medium">Banken</span>
+            </div>
+            <div className="text-2xl font-bold">{bankenData.bankCount}</div>
+            <p className="text-xs text-muted-foreground">{bankenData.loanCount} Kredite</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Investitionen & Nebenkosten Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Investitionen */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-5 w-5 text-purple-500" />
-              Investitionen
-            </CardTitle>
-            <CardDescription>Kapitalmaßnahmen dieses Jahr</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-2xl font-bold text-purple-600">{formatCurrency(investitionenTotal)}</div>
-                <div className="text-sm text-muted-foreground">Gesamt</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-emerald-600">{investitionenCount}</div>
-                <div className="text-sm text-muted-foreground">Maßnahmen</div>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              {investitionenRecent.slice(0, 3).map((inv, index) => (
-                <div key={index} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50">
-                  <span className="text-muted-foreground">{inv.description}</span>
-                  <span className="font-medium">{formatCurrency(inv.amount)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Nebenkosten Übersicht */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-5 w-5 text-blue-500" />
-              Nebenkosten
-            </CardTitle>
-            <CardDescription>Umlagen & nicht umlagefähige Kosten</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <div className="text-2xl font-bold text-emerald-600">{formatCurrency(nebenkostenUml)}</div>
-                <div className="text-sm text-muted-foreground">Umlagefähig</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(nebenkostenNichtUml)}</div>
-                <div className="text-sm text-muted-foreground">Nicht umlagef.</div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {nebenkostenDetails.slice(0, 4).map((nk, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{nk.name}</span>
-                  <span className={nk.umlagefaehig ? 'text-emerald-600' : 'text-red-600'}>
-                    {formatCurrency(nk.value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ============================================ */}
+      {/* KREDITE TABELLE */}
+      {/* ============================================ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-5 w-5 text-blue-500" />
+            Kredite
+          </CardTitle>
+          <CardDescription>
+            Gesamt: {formatCurrency(bankenData.totalDebt)} | Monatliche Rate: {formatCurrency(bankenData.totalRate)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 text-sm font-medium">Bank</th>
+                  <th className="text-left p-3 text-sm font-medium">Immobilie</th>
+                  <th className="text-right p-3 text-sm font-medium">Kreditsumme</th>
+                  <th className="text-right p-3 text-sm font-medium">Restschuld</th>
+                  <th className="text-right p-3 text-sm font-medium">Rate</th>
+                  <th className="text-right p-3 text-sm font-medium">Zins</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bankenData.loans.map((loan, index) => (
+                  <tr key={index} className="border-b hover:bg-muted/50">
+                    <td className="p-3 text-sm">{loan.bank}</td>
+                    <td className="p-3 text-sm">{loan.property}</td>
+                    <td className="p-3 text-sm text-right">{formatCurrency(loan.principal)}</td>
+                    <td className="p-3 text-sm text-right font-medium">{formatCurrency(loan.remaining)}</td>
+                    <td className="p-3 text-sm text-right">{formatCurrency(loan.rate)}/M</td>
+                    <td className="p-3 text-sm text-right">{loan.interest.toFixed(2)}%</td>
+                  </tr>
+                ))}
+                {bankenData.loans.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                      Keine Kredite vorhanden
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
