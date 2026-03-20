@@ -5,6 +5,20 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Override Leaflet default z-index values to not overlay dialogs
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    .leaflet-pane { z-index: 1 !important; }
+    .leaflet-control-container { z-index: 5 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 5 !important; }
+    .leaflet-control { z-index: 5 !important; }
+    .leaflet-popup-pane { z-index: 6 !important; }
+    .leaflet-marker-pane { z-index: 4 !important; }
+  `;
+  document.head.appendChild(style);
+}
+
 // Fix for default marker icons in Leaflet with Next.js
 const defaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',

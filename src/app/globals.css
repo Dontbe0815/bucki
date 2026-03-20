@@ -337,3 +337,25 @@ button, a, [role="button"] {
 button:active, a:active, [role="button"]:active {
   background-color: rgba(16, 185, 129, 0.1);
 }
+
+/* Leaflet Map z-index fixes - ensure maps don't overlay dialogs */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+.leaflet-control-container {
+  z-index: 10 !important;
+}
+
+.leaflet-control-zoom {
+  z-index: 10 !important;
+}
+
+/* Ensure dialogs are above leaflet maps */
+[data-radix-popper-content-wrapper] {
+  z-index: 50 !important;
+}
+
+[role="dialog"] {
+  z-index: 50 !important;
+}
