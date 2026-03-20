@@ -47,50 +47,39 @@ function PropertyCard({
   const { formatCurrency } = useI18n();
   const [loadingStreetView, setLoadingStreetView] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [mapError, setMapError] = useState(false);
   const rentedUnits = units.filter(u => u.status === 'rented').length;
   const vacancyRate = units.length > 0 ? ((units.length - rentedUnits) / units.length * 100).toFixed(0) : '0';
   const totalRent = units.reduce((sum, u) => sum + (u.status === 'rented' ? u.totalRent : 0), 0);
   const rentPerSqm = property.totalArea > 0 ? (totalRent / property.totalArea).toFixed(2) : '0';
-  
-  // Load coordinates for OpenStreetMap
+
+  // Build address query for map
+  const addressQuery = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`.trim());
+
+  // OpenStreetMap embed URL - works with address query (no geocoding needed)
+  const osmEmbedUrl = coordinates
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.003}%2C${coordinates.lat - 0.002}%2C${coordinates.lon + 0.003}%2C${coordinates.lat + 0.002}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`
+    : `https://www.openstreetmap.org/export/embed.html?bbox=10.0%2C50.0%2C11.0%2C51.0&layer=mapnik&marker=${addressQuery}`;
+
+  // Load coordinates for better map positioning (async, non-blocking)
   useEffect(() => {
     let isMounted = true;
     const loadCoordinates = async () => {
       try {
-        // Build full address string
-        const fullAddress = [
-          property.address,
-          property.postalCode,
-          property.city
-        ].filter(Boolean).join(', ');
-        
-        if (!fullAddress) {
-          if (isMounted) setMapError(true);
-          return;
-        }
-        
         const result = await geocodeAddressCached(
           property.address || '',
           property.postalCode || '',
           property.city || ''
         );
-        
-        if (isMounted) {
-          if (result) {
-            setCoordinates({ lat: result.lat, lon: result.lon });
-            setTimeout(() => setMapLoaded(true), 200);
-          } else {
-            setMapError(true);
-          }
+        if (isMounted && result) {
+          setCoordinates({ lat: result.lat, lon: result.lon });
         }
       } catch (error) {
-        console.error('Error loading coordinates:', error);
-        if (isMounted) setMapError(true);
+        console.error('Geocoding error:', error);
       }
     };
-    loadCoordinates();
+    if (property.address || property.city) {
+      loadCoordinates();
+    }
     return () => { isMounted = false; };
   }, [property.address, property.postalCode, property.city]);
 
@@ -139,26 +128,16 @@ function PropertyCard({
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer">
       {/* OpenStreetMap Preview */}
-      <div 
+      <div
         className="h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 relative overflow-hidden"
         onClick={onViewDetails}
       >
-        {coordinates && mapLoaded ? (
-          <iframe
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.003}%2C${coordinates.lat - 0.002}%2C${coordinates.lon + 0.003}%2C${coordinates.lat + 0.002}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`}
-            className="w-full h-full border-0"
-            loading="lazy"
-            title={`Karte: ${property.name}`}
-            style={{ pointerEvents: 'none' }}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-emerald-500">
-            <div className="text-center text-white">
-              <MapPin className="h-12 w-12 mx-auto mb-2 animate-pulse" />
-              <p className="text-sm">Karte wird geladen...</p>
-            </div>
-          </div>
-        )}
+        <iframe
+          src={osmEmbedUrl}
+          className="w-full h-full border-0"
+          title={`Karte: ${property.name}`}
+          style={{ pointerEvents: 'none' }}
+        />
         
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
