@@ -10,6 +10,21 @@ export interface GeocodingResult {
 }
 
 /**
+ * Normalize German umlauts for search fallback
+ * ä -> ae, ö -> oe, ü -> ue, ß -> ss
+ */
+function normalizeGerman(text: string): string {
+  return text
+    .replace(/ä/g, 'ae')
+    .replace(/Ä/g, 'Ae')
+    .replace(/ö/g, 'oe')
+    .replace(/Ö/g, 'Oe')
+    .replace(/ü/g, 'ue')
+    .replace(/Ü/g, 'Ue')
+    .replace(/ß/g, 'ss');
+}
+
+/**
  * Geocode an address to coordinates using Nominatim API
  * @param address - The street address
  * @param postalCode - Postal code
@@ -22,13 +37,52 @@ export async function geocodeAddress(
   city: string
 ): Promise<GeocodingResult | null> {
   try {
-    // Build the search query
-    const searchQuery = `${address}, ${postalCode} ${city}`.trim();
-    
-    // Use Nominatim API with proper headers
+    // Strategy 1: Exact address search
+    let searchQuery = `${address}, ${postalCode} ${city}`.trim();
+    let result = await searchNominatim(searchQuery);
+    if (result) return result;
+
+    // Strategy 2: Normalized umlauts (ä->ae, ö->oe, ü->ue)
+    const normalizedAddress = normalizeGerman(address);
+    const normalizedCity = normalizeGerman(city);
+    if (normalizedAddress !== address || normalizedCity !== city) {
+      searchQuery = `${normalizedAddress}, ${postalCode} ${normalizedCity}`.trim();
+      result = await searchNominatim(searchQuery);
+      if (result) return result;
+    }
+
+    // Strategy 3: Just street name + city (without house number)
+    const streetOnly = address.replace(/\d+.*$/, '').trim();
+    if (streetOnly !== address) {
+      searchQuery = `${streetOnly}, ${postalCode} ${city}`.trim();
+      result = await searchNominatim(searchQuery);
+      if (result) return result;
+    }
+
+    // Strategy 4: Postal code + city center
+    searchQuery = `${postalCode} ${city}`.trim();
+    result = await searchNominatim(searchQuery);
+    if (result) return result;
+
+    // Strategy 5: Just city
+    result = await searchNominatim(city);
+    if (result) return result;
+
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+}
+
+/**
+ * Search Nominatim API with a query string
+ */
+async function searchNominatim(query: string): Promise<GeocodingResult | null> {
+  try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?` +
-      `q=${encodeURIComponent(searchQuery)}&` +
+      `q=${encodeURIComponent(query)}&` +
       `format=json&` +
       `limit=1&` +
       `addressdetails=1`,
@@ -41,7 +95,6 @@ export async function geocodeAddress(
     );
 
     if (!response.ok) {
-      console.error('Geocoding API error:', response.status);
       return null;
     }
 
@@ -56,8 +109,7 @@ export async function geocodeAddress(
     }
     
     return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
+  } catch {
     return null;
   }
 }
@@ -108,6 +160,13 @@ export async function getStreetViewUrlFromAddress(
 
 // Cache for geocoding results to reduce API calls
 const geocodingCache = new Map<string, GeocodingResult>();
+
+/**
+ * Clear the geocoding cache (useful when addresses are updated)
+ */
+export function clearGeocodingCache(): void {
+  geocodingCache.clear();
+}
 
 /**
  * Geocode with caching to reduce API calls
