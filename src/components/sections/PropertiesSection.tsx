@@ -52,15 +52,13 @@ function PropertyCard({
   const totalRent = units.reduce((sum, u) => sum + (u.status === 'rented' ? u.totalRent : 0), 0);
   const rentPerSqm = property.totalArea > 0 ? (totalRent / property.totalArea).toFixed(2) : '0';
 
-  // Build address query for map
-  const addressQuery = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`.trim());
+  // Google Maps link
+  const getGoogleMapsUrl = () => {
+    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
 
-  // OpenStreetMap embed URL - works with address query (no geocoding needed)
-  const osmEmbedUrl = coordinates
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.003}%2C${coordinates.lat - 0.002}%2C${coordinates.lon + 0.003}%2C${coordinates.lat + 0.002}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`
-    : `https://www.openstreetmap.org/export/embed.html?bbox=10.0%2C50.0%2C11.0%2C51.0&layer=mapnik&marker=${addressQuery}`;
-
-  // Load coordinates for better map positioning (async, non-blocking)
+  // Load coordinates for map links
   useEffect(() => {
     let isMounted = true;
     const loadCoordinates = async () => {
@@ -82,12 +80,6 @@ function PropertyCard({
     }
     return () => { isMounted = false; };
   }, [property.address, property.postalCode, property.city]);
-
-  // Google Maps link
-  const getGoogleMapsUrl = () => {
-    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
-    return `https://www.google.com/maps/search/?api=1&query=${query}`;
-  };
   
   // Energy class color mapping
   const getEnergyColor = (energyClass: string) => {
@@ -127,20 +119,36 @@ function PropertyCard({
 
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer">
-      {/* OpenStreetMap Preview */}
+      {/* Map/Image Preview Area */}
       <div
-        className="h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 relative overflow-hidden"
+        className="h-48 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 relative overflow-hidden"
         onClick={onViewDetails}
       >
-        <iframe
-          src={osmEmbedUrl}
-          className="w-full h-full border-0"
-          title={`Karte: ${property.name}`}
-          style={{ pointerEvents: 'none' }}
-        />
+        {/* Decorative map-like pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-4 left-8 w-24 h-1 bg-white/50 rounded" />
+          <div className="absolute top-8 left-4 w-32 h-1 bg-white/50 rounded" />
+          <div className="absolute top-12 left-12 w-20 h-1 bg-white/50 rounded" />
+          <div className="absolute top-20 right-8 w-28 h-1 bg-white/50 rounded" />
+          <div className="absolute top-24 right-4 w-16 h-1 bg-white/50 rounded" />
+          <div className="absolute bottom-16 left-6 w-24 h-1 bg-white/50 rounded" />
+          <div className="absolute bottom-12 right-10 w-20 h-1 bg-white/50 rounded" />
+          {/* Grid pattern */}
+          <div className="absolute inset-0" style={{ 
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        
+        {/* Building Icon */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-xl">
+            <Building2 className="h-10 w-10 text-white" />
+          </div>
+        </div>
         
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
         
         {/* Top badges */}
         <div className="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none">
@@ -394,10 +402,12 @@ function PropertyDetailDialog({
   const { formatCurrency } = useI18n();
   const store = useStore();
   const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoading, setMapLoading] = useState(true);
   
   // Load coordinates for map
   useEffect(() => {
     if (property && open) {
+      setMapLoading(true);
       const loadCoordinates = async () => {
         try {
           const result = await geocodeAddressCached(property.address, property.postalCode, property.city);
@@ -406,6 +416,8 @@ function PropertyDetailDialog({
           }
         } catch (error) {
           console.error('Error loading coordinates:', error);
+        } finally {
+          setMapLoading(false);
         }
       };
       loadCoordinates();
@@ -417,20 +429,16 @@ function PropertyDetailDialog({
   const units = store.units.filter(u => u.propertyId === property.id);
   const rentedUnits = units.filter(u => u.status === 'rented').length;
 
-  // Generate OpenStreetMap embed URL
-  const getOsmEmbedUrl = () => {
-    if (coordinates) {
-      return `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.005}%2C${coordinates.lat - 0.003}%2C${coordinates.lon + 0.005}%2C${coordinates.lat + 0.003}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`;
-    }
-    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
-    return `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
-  };
-
   // Google Maps link
   const getGoogleMapsUrl = () => {
     const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
     return `https://www.google.com/maps/search/?api=1&query=${query}`;
   };
+
+  // OpenStreetMap embed URL
+  const osmEmbedUrl = coordinates
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.005}%2C${coordinates.lat - 0.003}%2C${coordinates.lon + 0.005}%2C${coordinates.lat + 0.003}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`
+    : null;
 
   const handleOpenGoogleMaps = () => {
     window.open(getGoogleMapsUrl(), '_blank');
@@ -440,14 +448,19 @@ function PropertyDetailDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{property.name}</DialogTitle>
-          <DialogDescription className="flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {property.address}, {property.postalCode} {property.city}
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-emerald-600" />
+            {property.name}
+          </DialogTitle>
+          <DialogDescription className="flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1">
+              <MapPin className="h-4 w-4" />
+              {property.address}, {property.postalCode} {property.city}
+            </span>
             <Button 
               variant="link" 
               size="sm" 
-              className="ml-2 p-0 h-auto"
+              className="p-0 h-auto text-emerald-600"
               onClick={handleOpenGoogleMaps}
             >
               <ExternalLink className="h-3 w-3 mr-1" /> In Google Maps öffnen
@@ -456,23 +469,47 @@ function PropertyDetailDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* OpenStreetMap Karte */}
-          <div className="h-64 rounded-lg overflow-hidden border relative">
-            <iframe
-              src={getOsmEmbedUrl()}
-              className="w-full h-full border-0"
-              loading="lazy"
-              title={`Karte: ${property.name}`}
-            />
+          {/* Karte */}
+          <div className="h-64 rounded-lg overflow-hidden border relative bg-muted">
+            {mapLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600">
+                <div className="text-center text-white">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p className="text-sm">Karte wird geladen...</p>
+                </div>
+              </div>
+            ) : osmEmbedUrl ? (
+              <iframe
+                src={osmEmbedUrl}
+                className="w-full h-full border-0"
+                title={`Karte: ${property.name}`}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600">
+                <div className="text-center text-white">
+                  <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm mb-3">Karte nicht verfügbar</p>
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={handleOpenGoogleMaps}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" /> In Google Maps öffnen
+                  </Button>
+                </div>
+              </div>
+            )}
             {/* Google Maps Button Overlay */}
-            <Button
-              variant="secondary"
-              size="sm"
-              className="absolute bottom-2 right-2 bg-white/90 hover:bg-white"
-              onClick={handleOpenGoogleMaps}
-            >
-              <ExternalLink className="h-4 w-4 mr-1" /> Google Maps
-            </Button>
+            {osmEmbedUrl && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute bottom-2 right-2 bg-white/90 hover:bg-white shadow-lg"
+                onClick={handleOpenGoogleMaps}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" /> Google Maps
+              </Button>
+            )}
           </div>
 
           {/* Quick Stats */}
