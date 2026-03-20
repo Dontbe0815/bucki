@@ -5,13 +5,54 @@ import { useStore } from '@/lib/store';
 import { useI18n } from '@/contexts/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DoorOpen, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { 
+  DoorOpen, DollarSign, TrendingUp, Building2, CreditCard, 
+  Percent, ArrowUpRight, ArrowDownRight, Wallet, Zap 
+} from 'lucide-react';
 import type { Property, Unit, Financing } from '@/lib/types';
 
 interface DashboardSectionProps {
   stats: any;
   isMobile?: boolean;
   setActiveTab: (tab: string) => void;
+}
+
+// LTV Gauge Component
+function LTVGauge({ ltv }: { ltv: number }) {
+  const getLTVColor = (ltv: number) => {
+    if (ltv <= 60) return '#10b981';
+    if (ltv <= 75) return '#f59e0b';
+    if (ltv <= 85) return '#f97316';
+    return '#ef4444';
+  };
+  
+  return (
+    <div className="relative w-28 h-14 mx-auto">
+      <svg viewBox="0 0 100 50" className="w-full h-full">
+        <path
+          d="M 10 50 A 40 40 0 0 1 90 50"
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 10 50 A 40 40 0 0 1 90 50"
+          fill="none"
+          stroke={getLTVColor(ltv)}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${Math.min(ltv, 100) * 1.26} 126`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-end justify-center pb-1">
+        <span className="text-lg font-bold" style={{ color: getLTVColor(ltv) }}>
+          {ltv.toFixed(1)}%
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardSection({ stats, isMobile, setActiveTab }: DashboardSectionProps) {
@@ -23,28 +64,36 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
   // ============================================
   
   const calculations = useMemo(() => {
-    // Wohneinheiten
+    // === Spalte 1 ===
     const totalUnits = store.units.length;
     const rentedUnits = store.units.filter((u: Unit) => u.status === 'rented').length;
     const vacantUnits = totalUnits - rentedUnits;
-    
-    // Kaltmiete (monatlich)
     const coldRent = store.units
       .filter((u: Unit) => u.status === 'rented')
       .reduce((sum: number, u: Unit) => sum + u.baseRent, 0);
-    
-    // Durchschnittliche Rendite
     const totalPurchasePrice = store.properties.reduce((sum: number, p: Property) => sum + p.purchasePrice, 0);
     const avgRoi = totalPurchasePrice > 0 ? ((coldRent * 12) / totalPurchasePrice) * 100 : 0;
     
+    // === Spalte 2 ===
+    const totalEstimatedValue = store.properties.reduce((sum: number, p: Property) => sum + (p.estimatedValue || p.marketValue), 0);
+    const totalRemainingDebt = store.financings.reduce((sum: number, f: Financing) => sum + f.remainingDebt, 0);
+    const ltv = totalEstimatedValue > 0 ? (totalRemainingDebt / totalEstimatedValue) * 100 : 0;
+    const totalLoans = store.financings.length;
+    
     return {
+      // Spalte 1
       totalUnits,
       rentedUnits,
       vacantUnits,
       coldRent,
-      avgRoi
+      avgRoi,
+      // Spalte 2
+      totalEstimatedValue,
+      totalRemainingDebt,
+      ltv,
+      totalLoans
     };
-  }, [store.units, store.properties]);
+  }, [store.units, store.properties, store.financings]);
 
   return (
     <div className="space-y-6">
@@ -56,11 +105,10 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         </div>
       </div>
 
-      {/* TOP METRICS - 4 Spalten (Step 1-3) */}
+      {/* TOP METRICS - 4 Spalten */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         
         {/* ========== STEP 1: Spalte 1 ========== */}
-        {/* Wohneinheiten, Kaltmiete, Durchschnittliche Rendite */}
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
           <CardContent className="pt-4 space-y-4">
             {/* Wohneinheiten */}
@@ -112,18 +160,55 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         </Card>
 
         {/* ========== STEP 2: Spalte 2 ========== */}
-        {/* Schätzwert, Restschuld, LTV */}
         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
           <CardContent className="pt-4 space-y-4">
-            <div className="text-center text-emerald-600 dark:text-emerald-400">
-              <p className="text-sm">Step 2 kommt hier</p>
-              <p className="text-xs mt-1">Schätzwert, Restschuld, LTV</p>
+            {/* Aktueller Schätzwert */}
+            <div>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+                <Building2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Aktueller Schätzwert</span>
+              </div>
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                {formatCurrency(calculations.totalEstimatedValue)}
+              </div>
+              <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                {store.properties.length} Immobilien
+              </div>
+            </div>
+            
+            <div className="border-t border-emerald-200 dark:border-emerald-700" />
+            
+            {/* Restschuld */}
+            <div>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+                <CreditCard className="h-4 w-4" />
+                <span className="text-sm font-medium">Restschuld</span>
+              </div>
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(calculations.totalRemainingDebt)}
+              </div>
+              <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                {calculations.totalLoans} {calculations.totalLoans === 1 ? 'Kredit' : 'Kredite'}
+              </div>
+            </div>
+            
+            <div className="border-t border-emerald-200 dark:border-emerald-700" />
+            
+            {/* LTV */}
+            <div>
+              <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
+                <Percent className="h-4 w-4" />
+                <span className="text-sm font-medium">LTV (Loan-to-Value)</span>
+              </div>
+              <LTVGauge ltv={calculations.ltv} />
+              <div className="text-xs text-center text-emerald-600 dark:text-emerald-400 mt-2">
+                Verschuldungsgrad
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* ========== STEP 3: Spalte 3 ========== */}
-        {/* Einnahmen, Ausgaben, Cashflow */}
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
           <CardContent className="pt-4 space-y-4">
             <div className="text-center text-purple-600 dark:text-purple-400">
@@ -134,7 +219,6 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         </Card>
 
         {/* ========== STEP 3: Spalte 4 ========== */}
-        {/* Energiewert */}
         <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 border-amber-200 dark:border-amber-800">
           <CardContent className="pt-4 space-y-4">
             <div className="text-center text-amber-600 dark:text-amber-400">
