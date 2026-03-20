@@ -80,6 +80,22 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
     const ltv = totalEstimatedValue > 0 ? (totalRemainingDebt / totalEstimatedValue) * 100 : 0;
     const totalLoans = store.financings.length;
     
+    // === Spalte 3 ===
+    const warmRent = store.units
+      .filter((u: Unit) => u.status === 'rented')
+      .reduce((sum: number, u: Unit) => sum + u.totalRent, 0);
+    const monthlyIncome = warmRent; // Für jetzt: Warmmiete als Haupteinnahme
+    const monthlyExpenses = stats.totalExpenses || 0;
+    const cashflow = monthlyIncome - monthlyExpenses;
+    
+    // === Spalte 4: Energiewert ===
+    const energyMap: Record<string, number> = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8 };
+    const propertiesWithEnergy = store.properties.filter((p: Property) => p.energyClass !== 'unknown');
+    const avgEnergyValue = propertiesWithEnergy.length > 0
+      ? propertiesWithEnergy.reduce((sum: number, p: Property) => sum + (energyMap[p.energyClass] || 5), 0) / propertiesWithEnergy.length
+      : 0;
+    const avgEnergyLetter = avgEnergyValue > 0 ? String.fromCharCode(64 + Math.round(avgEnergyValue)) : '-';
+    
     return {
       // Spalte 1
       totalUnits,
@@ -91,9 +107,18 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
       totalEstimatedValue,
       totalRemainingDebt,
       ltv,
-      totalLoans
+      totalLoans,
+      // Spalte 3
+      monthlyIncome,
+      monthlyExpenses,
+      cashflow,
+      // Spalte 4
+      avgEnergyValue,
+      avgEnergyLetter,
+      propertiesWithEnergyCount: propertiesWithEnergy.length,
+      totalPropertiesCount: store.properties.length
     };
-  }, [store.units, store.properties, store.financings]);
+  }, [store.units, store.properties, store.financings, stats]);
 
   return (
     <div className="space-y-6">
@@ -211,19 +236,97 @@ export default function DashboardSection({ stats, isMobile, setActiveTab }: Dash
         {/* ========== STEP 3: Spalte 3 ========== */}
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
           <CardContent className="pt-4 space-y-4">
-            <div className="text-center text-purple-600 dark:text-purple-400">
-              <p className="text-sm">Step 3 kommt hier</p>
-              <p className="text-xs mt-1">Einnahmen, Ausgaben, Cashflow</p>
+            {/* Einnahmen */}
+            <div>
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+                <ArrowUpRight className="h-4 w-4" />
+                <span className="text-sm font-medium">Einnahmen</span>
+              </div>
+              <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                {formatCurrency(calculations.monthlyIncome)}
+              </div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">
+                monatlich
+              </div>
+            </div>
+            
+            <div className="border-t border-purple-200 dark:border-purple-700" />
+            
+            {/* Ausgaben */}
+            <div>
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+                <ArrowDownRight className="h-4 w-4" />
+                <span className="text-sm font-medium">Ausgaben</span>
+              </div>
+              <div className="text-2xl font-bold text-orange-600">
+                {formatCurrency(calculations.monthlyExpenses)}
+              </div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">
+                monatlich
+              </div>
+            </div>
+            
+            <div className="border-t border-purple-200 dark:border-purple-700" />
+            
+            {/* Cashflow */}
+            <div>
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+                <Wallet className="h-4 w-4" />
+                <span className="text-sm font-medium">Cashflow</span>
+              </div>
+              <div className={`text-2xl font-bold ${calculations.cashflow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {formatCurrency(calculations.cashflow)}
+              </div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">
+                Einnahmen - Ausgaben
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* ========== STEP 3: Spalte 4 ========== */}
         <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 border-amber-200 dark:border-amber-800">
-          <CardContent className="pt-4 space-y-4">
-            <div className="text-center text-amber-600 dark:text-amber-400">
-              <p className="text-sm">Energiewert</p>
-              <p className="text-xs mt-1">kommt in Step 3</p>
+          <CardContent className="pt-4">
+            {/* Energiewert */}
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+              <Zap className="h-4 w-4" />
+              <span className="text-sm font-medium">Durchschnittlicher Energiewert</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className={`text-5xl font-bold ${
+                calculations.avgEnergyLetter <= 'C' ? 'text-green-600' :
+                calculations.avgEnergyLetter <= 'E' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {calculations.avgEnergyLetter}
+              </div>
+              <div className="flex-1">
+                <div className="text-sm text-amber-700 dark:text-amber-300">
+                  Ø {calculations.avgEnergyValue > 0 ? calculations.avgEnergyValue.toFixed(1) : '-'}
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {calculations.propertiesWithEnergyCount} von {calculations.totalPropertiesCount} Immobilien
+                </div>
+                
+                {/* Energy Scale */}
+                <div className="flex gap-1 mt-2">
+                  {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter) => (
+                    <div 
+                      key={letter} 
+                      className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${
+                        letter === calculations.avgEnergyLetter 
+                          ? 'ring-2 ring-amber-500 ring-offset-1' 
+                          : ''
+                      } ${
+                        letter <= 'C' ? 'bg-green-500 text-white' :
+                        letter <= 'E' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
+                      }`}
+                    >
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
