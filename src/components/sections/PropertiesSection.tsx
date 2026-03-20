@@ -83,14 +83,33 @@ function PropertyCard({
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
-      {/* Image Area with Map Link */}
+      {/* Map Preview Area */}
       <div 
-        className="relative h-44 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 cursor-pointer"
+        className="relative h-44 bg-gradient-to-br from-emerald-500 to-teal-600 cursor-pointer"
         onClick={onViewDetails}
       >
-        {/* Building Icon as Placeholder */}
+        {/* Map-style Pattern Background */}
+        <div className="absolute inset-0 opacity-20">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line x1="0" y1="25" x2="100" y2="25" stroke="white" strokeWidth="0.5" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="white" strokeWidth="0.5" />
+            <line x1="0" y1="75" x2="100" y2="75" stroke="white" strokeWidth="0.5" />
+            <line x1="20" y1="0" x2="20" y2="100" stroke="white" strokeWidth="0.5" />
+            <line x1="45" y1="0" x2="45" y2="100" stroke="white" strokeWidth="0.5" />
+            <line x1="70" y1="0" x2="70" y2="100" stroke="white" strokeWidth="0.5" />
+            <rect x="5" y="5" width="12" height="15" fill="white" fillOpacity="0.3" rx="1" />
+            <rect x="25" y="30" width="15" height="15" fill="white" fillOpacity="0.3" rx="1" />
+            <rect x="50" y="5" width="15" height="15" fill="white" fillOpacity="0.3" rx="1" />
+            <rect x="75" y="55" width="18" height="15" fill="white" fillOpacity="0.3" rx="1" />
+            <rect x="5" y="55" width="12" height="18" fill="white" fillOpacity="0.3" rx="1" />
+          </svg>
+        </div>
+        
+        {/* MapPin in Center */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <Building2 className="h-16 w-16 text-slate-300 dark:text-slate-600" />
+          <div className="bg-white rounded-full p-3 shadow-xl">
+            <MapPin className="h-8 w-8 text-emerald-600" />
+          </div>
         </div>
         
         {/* Property Type Badge */}
@@ -117,6 +136,11 @@ function PropertyCard({
           <Button size="sm" variant="secondary" className="h-8 px-3 bg-white/95 shadow-sm" onClick={(e) => { e.stopPropagation(); openGoogleMaps(); }}>
             <MapPin className="h-4 w-4 mr-1" /> Karte
           </Button>
+        </div>
+        
+        {/* Address Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+          <p className="text-white text-sm font-medium truncate">{property.city}</p>
         </div>
       </div>
 
@@ -227,10 +251,31 @@ function PropertyDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0">
-        {/* Header Image Area */}
-        <div className="relative h-56 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Building2 className="h-24 w-24 text-slate-300 dark:text-slate-600" />
+        {/* Header Map Area */}
+        <div className="relative h-56 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-slate-800 dark:to-slate-900">
+          {/* Map Preview - wir zeigen einen Link statt iframe */}
+          <div className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-black/5 transition-colors" onClick={openGoogleMaps}>
+            {coordinates ? (
+              <div className="text-center">
+                <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                  <MapPin className="h-10 w-10 text-white" />
+                </div>
+                <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
+                  {property.address}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {property.postalCode} {property.city}
+                </p>
+                <Badge variant="secondary" className="mt-3">
+                  <ExternalLink className="h-3 w-3 mr-1" /> Auf Google Maps öffnen
+                </Badge>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Building2 className="h-16 w-16 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-500 dark:text-slate-400">Karte laden...</p>
+              </div>
+            )}
           </div>
           
           {/* Title Overlay */}
@@ -239,9 +284,6 @@ function PropertyDetailDialog({
             <p className="text-white/90 flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               {property.address}, {property.postalCode} {property.city}
-              <Button variant="link" size="sm" className="text-white p-0 h-auto ml-2" onClick={openGoogleMaps}>
-                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Auf der Karte anzeigen
-              </Button>
             </p>
           </div>
 
