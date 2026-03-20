@@ -10,6 +10,26 @@ export interface GeocodingResult {
 }
 
 /**
+ * Manual coordinates for known addresses that Nominatim can't find
+ * (e.g., new streets in recent developments)
+ */
+const MANUAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
+  // Dülmener Straße 19, Datteln
+  'dülmener straße 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
+  'dülmener str. 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
+  'dülmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
+  'duelmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
+  // Hörder Phönixseeallee 152, Dortmund (am Phoenix-See)
+  'hörder phönixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'hörder phönixseeallee 152, 44263 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'phönixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'phönixseeallee 152, 44263 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'hoerder phoenixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'phoenixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'phoenixseeallee, dortmund': { lat: 51.4893, lon: 7.5141 },
+};
+
+/**
  * Normalize German umlauts for search fallback
  * ä -> ae, ö -> oe, ü -> ue, ß -> ss
  */
@@ -37,6 +57,17 @@ export async function geocodeAddress(
   city: string
 ): Promise<GeocodingResult | null> {
   try {
+    // Check manual coordinates first
+    const fullAddress = `${address}, ${postalCode} ${city}`.toLowerCase().trim();
+    const manualResult = MANUAL_COORDINATES[fullAddress];
+    if (manualResult) {
+      return {
+        lat: manualResult.lat,
+        lon: manualResult.lon,
+        displayName: `${address}, ${postalCode} ${city} (manual)`,
+      };
+    }
+
     // Strategy 1: Exact address search
     let searchQuery = `${address}, ${postalCode} ${city}`.trim();
     let result = await searchNominatim(searchQuery);
