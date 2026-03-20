@@ -24,11 +24,11 @@ import { useI18n } from '@/contexts/I18nContext';
 import type { Property } from '@/lib/types';
 import { 
   Plus, Edit2, Trash2, MapPin, ExternalLink, Building2,
-  Grid, Map, List, Eye, BedDouble, Ruler, Euro,
+  Grid, Map, List, BedDouble, Ruler, Euro,
   TrendingUp, ChevronRight, Calendar, Home, Zap,
   Hash, FileText, CheckCircle, XCircle
 } from 'lucide-react';
-import { geocodeAddressCached, getStreetViewUrl } from '@/lib/geocoding';
+import { geocodeAddressCached } from '@/lib/geocoding';
 
 // ============================================
 // PROPERTY CARD - ImmoScout Style
@@ -67,12 +67,11 @@ function PropertyCard({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
-  const openStreetView = () => {
-    if (coordinates) {
-      window.open(getStreetViewUrl(coordinates.lat, coordinates.lon), '_blank');
-    } else {
-      openGoogleMaps();
-    }
+  // Generate OpenStreetMap static image URL
+  const getOSMStaticMapUrl = () => {
+    if (!coordinates) return null;
+    // Use OpenStreetMap static map service
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${coordinates.lat},${coordinates.lon}&zoom=16&size=400x200&markers=${coordinates.lat},${coordinates.lon},red-pushpin`;
   };
 
   // Energy color
@@ -83,34 +82,29 @@ function PropertyCard({
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
-      {/* Map Preview Area */}
+      {/* Map Preview Area - OpenStreetMap */}
       <div 
-        className="relative h-44 bg-gradient-to-br from-emerald-500 to-teal-600 cursor-pointer"
-        onClick={onViewDetails}
+        className="relative h-44 bg-slate-200 dark:bg-slate-700 cursor-pointer overflow-hidden"
+        onClick={(e) => { e.stopPropagation(); openGoogleMaps(); }}
       >
-        {/* Map-style Pattern Background */}
-        <div className="absolute inset-0 opacity-20">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <line x1="0" y1="25" x2="100" y2="25" stroke="white" strokeWidth="0.5" />
-            <line x1="0" y1="50" x2="100" y2="50" stroke="white" strokeWidth="0.5" />
-            <line x1="0" y1="75" x2="100" y2="75" stroke="white" strokeWidth="0.5" />
-            <line x1="20" y1="0" x2="20" y2="100" stroke="white" strokeWidth="0.5" />
-            <line x1="45" y1="0" x2="45" y2="100" stroke="white" strokeWidth="0.5" />
-            <line x1="70" y1="0" x2="70" y2="100" stroke="white" strokeWidth="0.5" />
-            <rect x="5" y="5" width="12" height="15" fill="white" fillOpacity="0.3" rx="1" />
-            <rect x="25" y="30" width="15" height="15" fill="white" fillOpacity="0.3" rx="1" />
-            <rect x="50" y="5" width="15" height="15" fill="white" fillOpacity="0.3" rx="1" />
-            <rect x="75" y="55" width="18" height="15" fill="white" fillOpacity="0.3" rx="1" />
-            <rect x="5" y="55" width="12" height="18" fill="white" fillOpacity="0.3" rx="1" />
-          </svg>
-        </div>
-        
-        {/* MapPin in Center */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white rounded-full p-3 shadow-xl">
-            <MapPin className="h-8 w-8 text-emerald-600" />
+        {/* OpenStreetMap Static Image */}
+        {coordinates ? (
+          <img 
+            src={getOSMStaticMapUrl()!} 
+            alt="Karte"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to colored background if image fails
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <div className="bg-white rounded-full p-3 shadow-xl">
+              <MapPin className="h-8 w-8 text-emerald-600" />
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Property Type Badge */}
         <div className="absolute top-3 left-3">
@@ -128,14 +122,11 @@ function PropertyCard({
           </Badge>
         </div>
 
-        {/* Hover Actions */}
-        <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button size="sm" variant="secondary" className="h-8 px-3 bg-white/95 shadow-sm" onClick={(e) => { e.stopPropagation(); openStreetView(); }}>
-            <Eye className="h-4 w-4 mr-1" /> Street View
-          </Button>
-          <Button size="sm" variant="secondary" className="h-8 px-3 bg-white/95 shadow-sm" onClick={(e) => { e.stopPropagation(); openGoogleMaps(); }}>
-            <MapPin className="h-4 w-4 mr-1" /> Karte
-          </Button>
+        {/* Click to open Google Maps hint */}
+        <div className="absolute bottom-3 right-3">
+          <Badge variant="secondary" className="bg-white/90 shadow-sm text-xs">
+            <ExternalLink className="h-3 w-3 mr-1" /> Google Maps
+          </Badge>
         </div>
         
         {/* Address Overlay */}
@@ -240,6 +231,12 @@ function PropertyDetailDialog({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
+  // Generate OpenStreetMap static image URL for detail dialog
+  const getOSMStaticMapUrl = () => {
+    if (!coordinates) return null;
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${coordinates.lat},${coordinates.lon}&zoom=15&size=800x300&markers=${coordinates.lat},${coordinates.lon},red-pushpin`;
+  };
+
   // Energy colors
   const energyColors: Record<string, string> = {
     'A': 'bg-green-500 text-white', 'B': 'bg-green-400 text-white', 
@@ -251,32 +248,29 @@ function PropertyDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0">
-        {/* Header Map Area */}
-        <div className="relative h-56 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-slate-800 dark:to-slate-900">
-          {/* Map Preview - wir zeigen einen Link statt iframe */}
-          <div className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-black/5 transition-colors" onClick={openGoogleMaps}>
-            {coordinates ? (
-              <div className="text-center">
-                <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
-                  <MapPin className="h-10 w-10 text-white" />
-                </div>
-                <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
-                  {property.address}
-                </p>
-                <p className="text-slate-500 dark:text-slate-400">
-                  {property.postalCode} {property.city}
-                </p>
-                <Badge variant="secondary" className="mt-3">
-                  <ExternalLink className="h-3 w-3 mr-1" /> Auf Google Maps öffnen
-                </Badge>
-              </div>
-            ) : (
+        {/* Header Map Area - OpenStreetMap */}
+        <div 
+          className="relative h-56 bg-slate-200 dark:bg-slate-700 cursor-pointer overflow-hidden"
+          onClick={openGoogleMaps}
+        >
+          {/* OpenStreetMap Static Image */}
+          {coordinates ? (
+            <img 
+              src={getOSMStaticMapUrl()!} 
+              alt="Karte"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center">
               <div className="text-center">
                 <Building2 className="h-16 w-16 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                 <p className="text-slate-500 dark:text-slate-400">Karte laden...</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           
           {/* Title Overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
@@ -292,6 +286,11 @@ function PropertyDetailDialog({
             {property.propertyType === 'apartment' ? 'Wohnung' : 
              property.propertyType === 'house' ? 'Haus' : 
              property.propertyType === 'commercial' ? 'Gewerbe' : 'Gemischt'}
+          </Badge>
+
+          {/* Click to open Google Maps hint */}
+          <Badge variant="secondary" className="absolute top-4 right-4 bg-white/95 cursor-pointer hover:bg-white">
+            <ExternalLink className="h-3 w-3 mr-1" /> Auf Google Maps öffnen
           </Badge>
         </div>
 

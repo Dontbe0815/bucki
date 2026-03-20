@@ -104,7 +104,7 @@ import BankSection from '@/components/sections/BankSection';
 import DashboardSection from '@/components/sections/DashboardSection';
 import PropertiesSection from '@/components/sections/PropertiesSection';
 import FinancesSectionImport from '@/components/sections/FinancesSection';
-import { geocodeAddressCached, getStreetViewUrl } from '@/lib/geocoding';
+import { geocodeAddressCached } from '@/lib/geocoding';
 
 // Navigation Items - wird dynamisch mit i18n gesetzt
 const getNavItems = (t: any) => [
