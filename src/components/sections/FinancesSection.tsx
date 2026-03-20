@@ -27,7 +27,7 @@ import { categoryLabels } from './constants';
 import { 
   Plus, Edit2, Trash2, DollarSign, TrendingUp, TrendingDown, Wallet,
   PiggyBank, Receipt, FileSpreadsheet, ArrowUpRight, ArrowDownRight,
-  Building2, Calendar, AlertTriangle
+  Building2, Calendar, AlertTriangle, Upload, FileText, Download
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area,
@@ -57,6 +57,161 @@ function FinancesSection() {
     isRecurring: false,
     recurringInterval: 'monthly' as 'monthly' | 'quarterly' | 'yearly',
   });
+
+  // Kontoauszug Import State
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importedTransactions, setImportedTransactions] = useState<Array<{
+    date: string;
+    amount: number;
+    description: string;
+    type: 'income' | 'expense';
+  }>>([]);
+  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'done'>('upload');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Parse MT940/CSV bank statement
+  const parseBankStatement = async (file: File) => {
+    setIsProcessing(true);
+    try {
+      const text = await file.text();
+      const transactions: Array<{ date: string; amount: number; description: string; type: 'income' | 'expense' }> = [];
+
+      // Try MT940 format first
+      if (text.includes(':20:') || text.includes(':61:')) {
+        // MT940 parsing
+        const lines = text.split('\n');
+        let currentDate = '';
+        let currentAmount = 0;
+        let currentDescription = '';
+
+        for (const line of lines) {
+          // Date line :61:
+          if (line.startsWith(':61:')) {
+            // Save previous transaction
+            if (currentDate && currentAmount !== 0) {
+              transactions.push({
+                date: currentDate,
+                amount: Math.abs(currentAmount),
+                description: currentDescription.trim(),
+                type: currentAmount > 0 ? 'income' : 'expense'
+              });
+            }
+            // Parse date and amount from :61:160115DR5,00NTRF...
+            const match = line.match(/:61:(\d{6})([CD])([DR])?(\d+[,.]\d+)/);
+            if (match) {
+              const dateStr = match[1];
+              currentDate = `20${dateStr.substring(0, 2)}-${dateStr.substring(2, 4)}-${dateStr.substring(4, 6)}`;
+              const isCredit = match[2] === 'C';
+              const amount = parseFloat(match[4].replace(',', '.'));
+              currentAmount = isCredit ? amount : -amount;
+              currentDescription = '';
+            }
+          }
+          // Description line :86:
+          else if (line.startsWith(':86:')) {
+            currentDescription = line.substring(4).trim();
+          }
+          // Multi-line description
+          else if (currentDate && !line.startsWith(':') && line.trim()) {
+            currentDescription += ' ' + line.trim();
+          }
+        }
+        // Save last transaction
+        if (currentDate && currentAmount !== 0) {
+          transactions.push({
+            date: currentDate,
+            amount: Math.abs(currentAmount),
+            description: currentDescription.trim(),
+            type: currentAmount > 0 ? 'income' : 'expense'
+          });
+        }
+      } else {
+        // Try CSV format (German bank export)
+        const lines = text.split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          // Common German CSV formats
+          const separators = [';', '\t', ','];
+          for (const sep of separators) {
+            const cols = line.split(sep);
+            if (cols.length >= 3) {
+              // Try to find date, amount, description
+              const dateMatch = cols[0]?.match(/(\d{2})\.(\d{2})\.(\d{4})/) || cols[1]?.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+              if (dateMatch) {
+                const date = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+                // Find amount (look for number with comma as decimal separator)
+                let amount = 0;
+                let type: 'income' | 'expense' = 'expense';
+                for (const col of cols) {
+                  const amountMatch = col.match(/(-?\d+[.,]\d{2})/);
+                  if (amountMatch) {
+                    amount = parseFloat(amountMatch[1].replace(',', '.').replace('.', ''));
+                    if (amount < 0) {
+                      type = 'expense';
+                      amount = Math.abs(amount);
+                    } else {
+                      // Check if there's a separate column indicating credit
+                      const isCredit = cols.some(c => c.toLowerCase().includes('haben') || c.toLowerCase().includes('gutschrift') || c.toLowerCase() === 'c');
+                      type = isCredit ? 'income' : 'expense';
+                    }
+                    break;
+                  }
+                }
+                // Get description from remaining columns
+                const description = cols.slice(2).join(' ').replace(/["']/g, '').trim();
+                if (date && amount > 0) {
+                  transactions.push({ date, amount, description, type });
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      setImportedTransactions(transactions);
+      setImportStep('preview');
+      toast.success(`${transactions.length} Transaktionen gefunden`);
+    } catch (error) {
+      console.error('Parse error:', error);
+      toast.error('Fehler beim Parsen der Datei');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      parseBankStatement(file);
+    }
+  };
+
+  const handleImportTransactions = () => {
+    let imported = 0;
+    importedTransactions.forEach(t => {
+      store.addTransaction({
+        propertyId: store.properties[0]?.id || '',
+        unitId: '',
+        type: t.type,
+        category: t.type === 'income' ? 'rent' : 'other',
+        amount: t.amount,
+        date: t.date,
+        description: t.description,
+        isRecurring: false,
+      });
+      imported++;
+    });
+    toast.success(`${imported} Transaktionen importiert`);
+    setImportStep('done');
+    setTimeout(() => {
+      setImportDialogOpen(false);
+      setImportStep('upload');
+      setImportedTransactions([]);
+    }, 1500);
+  };
 
   // ============================================
   // BERECHNUNGEN
@@ -216,7 +371,7 @@ function FinancesSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <DollarSign className="h-8 w-8 text-emerald-600" />
@@ -226,9 +381,14 @@ function FinancesSection() {
             Einnahmen, Ausgaben, Hausgelder, Nebenkosten & Rücklagen
           </p>
         </div>
-        <Button onClick={openNewDialog} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" /> Neue Transaktion
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={openNewDialog} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="h-4 w-4 mr-2" /> Neue Transaktion
+          </Button>
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Kontoauszug importieren
+          </Button>
+        </div>
       </div>
 
       {/* Quick Summary */}
@@ -737,6 +897,136 @@ function FinancesSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Kontoauszug Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-emerald-600" />
+              Kontoauszug importieren
+            </DialogTitle>
+          </DialogHeader>
+
+          {importStep === 'upload' && (
+            <div className="py-8">
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-12 text-center hover:border-emerald-500 transition-colors">
+                <input
+                  type="file"
+                  accept=".csv,.txt,.mt940,.sta"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="bank-statement-upload"
+                />
+                <label htmlFor="bank-statement-upload" className="cursor-pointer">
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium mb-2">Kontoauszug hochladen</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Unterstützte Formate: CSV, MT940, STA
+                  </p>
+                  <Button variant="outline" className="mx-auto" asChild>
+                    <span>Datei auswählen</span>
+                  </Button>
+                </label>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+                <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-2">Unterstützte Bankformate:</h4>
+                <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                  <li>• MT940 (SWIFT-Format) - von allen Banken</li>
+                  <li>• CSV-Exporte (Deutsche Bank, Sparkasse, Volksbank, etc.)</li>
+                  <li>• CAMT.052 / CAMT.053 Formate</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {importStep === 'preview' && (
+            <div className="py-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {importedTransactions.length} Transaktionen gefunden
+                </p>
+                <Button variant="outline" size="sm" onClick={() => { setImportStep('upload'); setImportedTransactions([]); }}>
+                  Neue Datei
+                </Button>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto border rounded-lg">
+                <table className="w-full">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="text-left p-3 text-sm font-medium">Datum</th>
+                      <th className="text-left p-3 text-sm font-medium">Beschreibung</th>
+                      <th className="text-right p-3 text-sm font-medium">Betrag</th>
+                      <th className="text-center p-3 text-sm font-medium">Typ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importedTransactions.slice(0, 50).map((t, i) => (
+                      <tr key={i} className="border-t hover:bg-muted/50">
+                        <td className="p-3 text-sm">{formatDate(t.date)}</td>
+                        <td className="p-3 text-sm max-w-xs truncate">{t.description}</td>
+                        <td className={`p-3 text-sm text-right font-medium ${t.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge variant={t.type === 'income' ? 'default' : 'destructive'} className="text-xs">
+                            {t.type === 'income' ? 'Einnahme' : 'Ausgabe'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {importedTransactions.length > 50 && (
+                  <div className="p-3 text-center text-sm text-muted-foreground bg-muted/50">
+                    ... und {importedTransactions.length - 50} weitere Transaktionen
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center mt-4 p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-300">
+                    Gesamt: {formatCurrency(importedTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0))} Einnahmen, {' '}
+                    {formatCurrency(importedTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0))} Ausgaben
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {importStep === 'done' && (
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Download className="h-8 w-8 text-emerald-600" />
+              </div>
+              <p className="text-lg font-medium text-emerald-600">Import erfolgreich!</p>
+              <p className="text-muted-foreground">Die Transaktionen wurden importiert.</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            {importStep === 'preview' && (
+              <>
+                <Button variant="outline" onClick={() => { setImportDialogOpen(false); setImportStep('upload'); setImportedTransactions([]); }}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleImportTransactions} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Download className="h-4 w-4 mr-2" />
+                  {importedTransactions.length} Transaktionen importieren
+                </Button>
+              </>
+            )}
+            {importStep === 'upload' && (
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                Schließen
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

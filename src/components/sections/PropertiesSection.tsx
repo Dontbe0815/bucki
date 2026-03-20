@@ -46,31 +46,42 @@ function PropertyCard({
 }) {
   const { formatCurrency } = useI18n();
   const [loadingStreetView, setLoadingStreetView] = useState(false);
-  const [mapImageUrl, setMapImageUrl] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
   const rentedUnits = units.filter(u => u.status === 'rented').length;
   const vacancyRate = units.length > 0 ? ((units.length - rentedUnits) / units.length * 100).toFixed(0) : '0';
   const totalRent = units.reduce((sum, u) => sum + (u.status === 'rented' ? u.totalRent : 0), 0);
   const rentPerSqm = property.totalArea > 0 ? (totalRent / property.totalArea).toFixed(2) : '0';
   
-  // Load Google Maps static image
+  // Load coordinates for OpenStreetMap
   useEffect(() => {
-    const loadMapImage = async () => {
+    const loadCoordinates = async () => {
       try {
         const result = await geocodeAddressCached(property.address, property.postalCode, property.city);
         if (result) {
-          // Use Google Maps Static API with the coordinates
-          const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-          if (apiKey) {
-            const url = `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lon}&zoom=17&size=400x200&maptype=roadmap&markers=color:red%7C${result.lat},${result.lon}&key=${apiKey}`;
-            setMapImageUrl(url);
-          }
+          setCoordinates({ lat: result.lat, lon: result.lon });
         }
       } catch (error) {
-        console.error('Error loading map image:', error);
+        console.error('Error loading coordinates:', error);
       }
     };
-    loadMapImage();
+    loadCoordinates();
   }, [property.address, property.postalCode, property.city]);
+
+  // Generate OpenStreetMap embed URL
+  const getOsmEmbedUrl = () => {
+    if (coordinates) {
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.003}%2C${coordinates.lat - 0.002}%2C${coordinates.lon + 0.003}%2C${coordinates.lat + 0.002}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`;
+    }
+    // Fallback: search by address
+    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
+    return `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
+  };
+
+  // Google Maps link
+  const getGoogleMapsUrl = () => {
+    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
   
   // Energy class color mapping
   const getEnergyColor = (energyClass: string) => {
@@ -88,14 +99,17 @@ function PropertyCard({
     return colors[energyClass] || colors['unknown'];
   };
 
+  const handleOpenGoogleMaps = () => {
+    window.open(getGoogleMapsUrl(), '_blank');
+  };
+
   const handleOpenStreetView = async () => {
     setLoadingStreetView(true);
     try {
-      const result = await geocodeAddressCached(property.address, property.postalCode, property.city);
-      if (result) {
-        window.open(getStreetViewUrl(result.lat, result.lon), '_blank');
+      if (coordinates) {
+        window.open(getStreetViewUrl(coordinates.lat, coordinates.lon), '_blank');
       } else {
-        window.open(`https://www.google.com/maps/search/${encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`)}`, '_blank');
+        window.open(getGoogleMapsUrl(), '_blank');
         toast.warning('Street View nicht verfügbar');
       }
     } catch (error) {
@@ -107,28 +121,23 @@ function PropertyCard({
 
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer">
-      {/* Image / Map Preview */}
+      {/* OpenStreetMap Preview */}
       <div 
         className="h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 relative overflow-hidden"
         onClick={onViewDetails}
       >
-        {mapImageUrl ? (
-          <img 
-            src={mapImageUrl} 
-            alt={`${property.name} - Karte`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Building2 className="h-20 w-20 text-white/30" />
-          </div>
-        )}
+        <iframe
+          src={getOsmEmbedUrl()}
+          className="w-full h-full border-0"
+          loading="lazy"
+          title={`Karte: ${property.name}`}
+        />
         
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
         
         {/* Top badges */}
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none">
           <Badge variant="outline" className="bg-white/90 text-gray-900 backdrop-blur-sm">
             {property.propertyType === 'apartment' && 'Wohnung'}
             {property.propertyType === 'house' && 'Haus'}
@@ -142,7 +151,7 @@ function PropertyCard({
         </div>
         
         {/* Title Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4">
+        <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
           <h3 className="text-xl font-bold text-white drop-shadow-lg">{property.name}</h3>
           <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow">
             <MapPin className="h-3 w-3" />
@@ -158,6 +167,7 @@ function PropertyCard({
             className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
             onClick={(e) => { e.stopPropagation(); handleOpenStreetView(); }}
             disabled={loadingStreetView}
+            title="Street View öffnen"
           >
             {loadingStreetView ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
           </Button>
@@ -165,7 +175,17 @@ function PropertyCard({
             size="sm" 
             variant="secondary" 
             className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+            onClick={(e) => { e.stopPropagation(); handleOpenGoogleMaps(); }}
+            title="In Google Maps öffnen"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            title="Bearbeiten"
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -242,10 +262,10 @@ function PropertyCard({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={handleOpenStreetView}
-            disabled={loadingStreetView}
+            onClick={handleOpenGoogleMaps}
+            title="In Google Maps öffnen"
           >
-            {loadingStreetView ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+            <MapPin className="h-4 w-4" />
           </Button>
           <Button 
             variant="outline" 
@@ -367,11 +387,48 @@ function PropertyDetailDialog({
 }) {
   const { formatCurrency } = useI18n();
   const store = useStore();
+  const [coordinates, setCoordinates] = useState<{ lat: number; lon: number } | null>(null);
+  
+  // Load coordinates for map
+  useEffect(() => {
+    if (property && open) {
+      const loadCoordinates = async () => {
+        try {
+          const result = await geocodeAddressCached(property.address, property.postalCode, property.city);
+          if (result) {
+            setCoordinates({ lat: result.lat, lon: result.lon });
+          }
+        } catch (error) {
+          console.error('Error loading coordinates:', error);
+        }
+      };
+      loadCoordinates();
+    }
+  }, [property, open]);
   
   if (!property) return null;
   
   const units = store.units.filter(u => u.propertyId === property.id);
   const rentedUnits = units.filter(u => u.status === 'rented').length;
+
+  // Generate OpenStreetMap embed URL
+  const getOsmEmbedUrl = () => {
+    if (coordinates) {
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.005}%2C${coordinates.lat - 0.003}%2C${coordinates.lon + 0.005}%2C${coordinates.lat + 0.003}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`;
+    }
+    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
+    return `https://www.openstreetmap.org/export/embed.html?query=${query}&layer=mapnik`;
+  };
+
+  // Google Maps link
+  const getGoogleMapsUrl = () => {
+    const query = encodeURIComponent(`${property.address}, ${property.postalCode} ${property.city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
+
+  const handleOpenGoogleMaps = () => {
+    window.open(getGoogleMapsUrl(), '_blank');
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -381,13 +438,35 @@ function PropertyDetailDialog({
           <DialogDescription className="flex items-center gap-1">
             <MapPin className="h-4 w-4" />
             {property.address}, {property.postalCode} {property.city}
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="ml-2 p-0 h-auto"
+              onClick={handleOpenGoogleMaps}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" /> In Google Maps öffnen
+            </Button>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Image Placeholder */}
-          <div className="h-64 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center">
-            <Building2 className="h-24 w-24 text-white/30" />
+          {/* OpenStreetMap Karte */}
+          <div className="h-64 rounded-lg overflow-hidden border relative">
+            <iframe
+              src={getOsmEmbedUrl()}
+              className="w-full h-full border-0"
+              loading="lazy"
+              title={`Karte: ${property.name}`}
+            />
+            {/* Google Maps Button Overlay */}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute bottom-2 right-2 bg-white/90 hover:bg-white"
+              onClick={handleOpenGoogleMaps}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" /> Google Maps
+            </Button>
           </div>
 
           {/* Quick Stats */}
@@ -477,6 +556,9 @@ function PropertyDetailDialog({
         )}
 
         <DialogFooter>
+          <Button variant="outline" onClick={handleOpenGoogleMaps}>
+            <MapPin className="h-4 w-4 mr-2" /> Google Maps öffnen
+          </Button>
           <Button variant="outline" onClick={onClose}>Schließen</Button>
           <Button onClick={onEdit} className="bg-emerald-600 hover:bg-emerald-700">
             <Edit2 className="h-4 w-4 mr-2" /> Bearbeiten
