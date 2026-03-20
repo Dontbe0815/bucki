@@ -10,31 +10,6 @@ export interface GeocodingResult {
 }
 
 /**
- * Manual coordinates for known addresses that Nominatim can't find
- * (e.g., new streets in recent developments)
- */
-const MANUAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
-  // Dülmener Straße 19, Datteln (prop-3 in seedData)
-  'dülmener straße 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  'dülmener str. 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  'dülmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  'duelmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  'duelmener straße 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  // Hörder Phönixseeallee 152, Dortmund (prop-6 in seedData)
-  // Koordinaten von Nominatim für "Hörder Phoenixseeallee"
-  'hörder phönixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'hörder phönixseeallee 152, 44263 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'phönixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'phönixseeallee 152, 44263 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'hoerder phönixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'hörder phoenixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'hoerder phoenixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'phoenixseeallee 152, 44145 dortmund': { lat: 51.4869, lon: 7.5118 },
-  'phönixseeallee, dortmund': { lat: 51.4869, lon: 7.5118 },
-  'phoenixseeallee, dortmund': { lat: 51.4869, lon: 7.5118 },
-};
-
-/**
  * Normalize German umlauts for search fallback
  * ä -> ae, ö -> oe, ü -> ue, ß -> ss
  */
@@ -50,8 +25,17 @@ function normalizeGerman(text: string): string {
 }
 
 /**
+ * Extract street name without house number
+ * "Hörder Phönixseeallee 152" -> "Hörder Phönixseeallee"
+ */
+function extractStreetName(address: string): string {
+  // Remove house number and any trailing characters
+  return address.replace(/\s+\d+.*$/, '').trim();
+}
+
+/**
  * Geocode an address to coordinates using Nominatim API
- * @param address - The street address
+ * @param address - The street address (e.g., "Hörder Phönixseeallee 152")
  * @param postalCode - Postal code
  * @param city - City name
  * @returns GeocodingResult or null if not found
@@ -62,45 +46,44 @@ export async function geocodeAddress(
   city: string
 ): Promise<GeocodingResult | null> {
   try {
-    // Check manual coordinates first
-    const fullAddress = `${address}, ${postalCode} ${city}`.toLowerCase().trim();
-    const manualResult = MANUAL_COORDINATES[fullAddress];
-    if (manualResult) {
-      return {
-        lat: manualResult.lat,
-        lon: manualResult.lon,
-        displayName: `${address}, ${postalCode} ${city} (manual)`,
-      };
-    }
-
-    // Strategy 1: Exact address search
-    let searchQuery = `${address}, ${postalCode} ${city}`.trim();
+    const streetOnly = extractStreetName(address);
+    const normalizedAddress = normalizeGerman(address);
+    const normalizedStreet = normalizeGerman(streetOnly);
+    const normalizedCity = normalizeGerman(city);
+    
+    // Strategy 1: Full address with normalized umlauts
+    let searchQuery = `${normalizedAddress}, ${postalCode} ${normalizedCity}`.trim();
     let result = await searchNominatim(searchQuery);
     if (result) return result;
 
-    // Strategy 2: Normalized umlauts (ä->ae, ö->oe, ü->ue)
-    const normalizedAddress = normalizeGerman(address);
-    const normalizedCity = normalizeGerman(city);
-    if (normalizedAddress !== address || normalizedCity !== city) {
-      searchQuery = `${normalizedAddress}, ${postalCode} ${normalizedCity}`.trim();
+    // Strategy 2: Street name only (without house number) + city - normalized
+    if (normalizedStreet !== normalizedAddress) {
+      searchQuery = `${normalizedStreet}, ${normalizedCity}`.trim();
       result = await searchNominatim(searchQuery);
       if (result) return result;
     }
 
-    // Strategy 3: Just street name + city (without house number)
-    const streetOnly = address.replace(/\d+.*$/, '').trim();
-    if (streetOnly !== address) {
-      searchQuery = `${streetOnly}, ${postalCode} ${city}`.trim();
-      result = await searchNominatim(searchQuery);
-      if (result) return result;
-    }
+    // Strategy 3: Street name + postal code - normalized
+    searchQuery = `${normalizedStreet}, ${postalCode}`.trim();
+    result = await searchNominatim(searchQuery);
+    if (result) return result;
 
-    // Strategy 4: Postal code + city center
+    // Strategy 4: Original address with umlauts
+    searchQuery = `${address}, ${postalCode} ${city}`.trim();
+    result = await searchNominatim(searchQuery);
+    if (result) return result;
+
+    // Strategy 5: Street only with original umlauts + city
+    searchQuery = `${streetOnly}, ${city}`.trim();
+    result = await searchNominatim(searchQuery);
+    if (result) return result;
+
+    // Strategy 6: Postal code + city (city center)
     searchQuery = `${postalCode} ${city}`.trim();
     result = await searchNominatim(searchQuery);
     if (result) return result;
 
-    // Strategy 5: Just city
+    // Strategy 7: Just city
     result = await searchNominatim(city);
     if (result) return result;
 
