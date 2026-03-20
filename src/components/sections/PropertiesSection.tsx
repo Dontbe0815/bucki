@@ -119,39 +119,34 @@ function PropertyCard({
 
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer">
-      {/* Map/Image Preview Area */}
+      {/* Map Preview Area */}
       <div
-        className="h-48 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 relative overflow-hidden"
+        className="h-48 bg-gradient-to-br from-emerald-500 to-teal-600 relative overflow-hidden"
         onClick={onViewDetails}
       >
-        {/* Decorative map-like pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-4 left-8 w-24 h-1 bg-white/50 rounded" />
-          <div className="absolute top-8 left-4 w-32 h-1 bg-white/50 rounded" />
-          <div className="absolute top-12 left-12 w-20 h-1 bg-white/50 rounded" />
-          <div className="absolute top-20 right-8 w-28 h-1 bg-white/50 rounded" />
-          <div className="absolute top-24 right-4 w-16 h-1 bg-white/50 rounded" />
-          <div className="absolute bottom-16 left-6 w-24 h-1 bg-white/50 rounded" />
-          <div className="absolute bottom-12 right-10 w-20 h-1 bg-white/50 rounded" />
-          {/* Grid pattern */}
-          <div className="absolute inset-0" style={{ 
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }} />
-        </div>
-        
-        {/* Building Icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-xl">
-            <Building2 className="h-10 w-10 text-white" />
+        {/* OpenStreetMap iframe */}
+        {coordinates ? (
+          <iframe
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${coordinates.lon - 0.005}%2C${coordinates.lat - 0.003}%2C${coordinates.lon + 0.005}%2C${coordinates.lat + 0.003}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lon}`}
+            className="w-full h-full border-0 absolute inset-0"
+            title={`Karte: ${property.name}`}
+            loading="lazy"
+          />
+        ) : (
+          // Loading placeholder
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600">
+            <div className="text-center text-white">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-sm">Karte wird geladen...</p>
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
         
         {/* Top badges */}
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none">
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none z-10">
           <Badge variant="outline" className="bg-white/90 text-gray-900 backdrop-blur-sm">
             {property.propertyType === 'apartment' && 'Wohnung'}
             {property.propertyType === 'house' && 'Haus'}
@@ -165,7 +160,7 @@ function PropertyCard({
         </div>
         
         {/* Title Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+        <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none z-10">
           <h3 className="text-xl font-bold text-white drop-shadow-lg">{property.name}</h3>
           <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow">
             <MapPin className="h-3 w-3" />
@@ -174,7 +169,7 @@ function PropertyCard({
         </div>
 
         {/* Quick Actions on Hover */}
-        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <Button 
             size="sm" 
             variant="secondary" 
