@@ -14,18 +14,22 @@ export interface GeocodingResult {
  * (e.g., new streets in recent developments)
  */
 const MANUAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
-  // Dülmener Straße 19, Datteln
+  // Dülmener Straße 19, Datteln (prop-3 in seedData)
   'dülmener straße 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
   'dülmener str. 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
   'dülmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
   'duelmener strasse 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
-  // Hörder Phönixseeallee 152, Dortmund (am Phoenix-See)
+  'duelmener straße 19, 45711 datteln': { lat: 51.6647, lon: 7.3915 },
+  // Hörder Phönixseeallee 152, Dortmund (prop-6 in seedData) - am Phoenix-See
   'hörder phönixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
   'hörder phönixseeallee 152, 44263 dortmund': { lat: 51.4893, lon: 7.5141 },
   'phönixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
   'phönixseeallee 152, 44263 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'hoerder phönixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'hörder phoenixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
   'hoerder phoenixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
   'phoenixseeallee 152, 44145 dortmund': { lat: 51.4893, lon: 7.5141 },
+  'phönixseeallee, dortmund': { lat: 51.4893, lon: 7.5141 },
   'phoenixseeallee, dortmund': { lat: 51.4893, lon: 7.5141 },
 };
 
